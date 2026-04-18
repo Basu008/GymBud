@@ -15,8 +15,6 @@ type Request struct {
 	HandlerFunc func(*RequestCtx, http.ResponseWriter, *http.Request)
 	AuthFunc    TokenAuth
 	IsLoggedIn  bool
-	IsPremium   bool
-	IsAdmin     bool
 }
 
 func (rh *Request) ServeHTTP(w http.ResponseWriter, r *http.Request) {

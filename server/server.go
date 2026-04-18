@@ -9,9 +9,11 @@ import (
 	"github.com/Basu008/GymBud/api"
 	"github.com/Basu008/GymBud/app"
 	"github.com/Basu008/GymBud/server/config"
+	"github.com/Basu008/GymBud/server/database"
 	"github.com/Basu008/GymBud/server/logger"
 	"github.com/Basu008/GymBud/server/middleware"
 	"github.com/gorilla/mux"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/cors"
 	"github.com/rs/zerolog"
 	"github.com/urfave/negroni/v3"
@@ -27,7 +29,7 @@ type Server struct {
 	Log        *zerolog.Logger
 	Config     *config.Config
 
-	//Storages
+	Postgres *pgxpool.Pool
 
 	API *api.API
 }
@@ -42,13 +44,16 @@ func NewServer() *Server {
 
 	server.InitLogger()
 
+	server.Postgres = database.NewPostgresPool(c.PostgresDatabaseConfig)
+
 	r := mux.NewRouter()
 	server.Router = r
 
 	appLogger := server.Log.With().Str("type", "app").Logger()
 	a := app.NewApp(&app.Options{
-		Logger: &appLogger,
-		Config: c,
+		Logger:   &appLogger,
+		Config:   c,
+		Postgres: server.Postgres,
 	})
 
 	apiLogger := server.Log.With().Str("type", "api").Logger()
@@ -121,5 +126,8 @@ func (s *Server) StopServer() {
 
 	s.Log.Debug().Msg("Shutting down server")
 	s.httpServer.Shutdown(ctx)
+	if s.Postgres != nil {
+		s.Postgres.Close()
+	}
 	s.Log.Debug().Msg("Server shut down complete")
 }

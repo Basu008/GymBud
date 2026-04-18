@@ -38,6 +38,16 @@ type MongoDatabaseConfig struct {
 }
 
 type PostgresDatabaseConfig struct {
+	Host            string        `mapstructure:"host"`
+	Port            int           `mapstructure:"port"`
+	User            string        `mapstructure:"user"`
+	Password        string        `mapstructure:"password"`
+	Database        string        `mapstructure:"database"`
+	SSLMode         string        `mapstructure:"sslMode"`
+	MaxConnections  int32         `mapstructure:"maxConnections"`
+	MinConnections  int32         `mapstructure:"minConnections"`
+	ConnectTimeout  time.Duration `mapstructure:"connectTimeout"`
+	HealthCheckTime time.Duration `mapstructure:"healthCheckTime"`
 }
 
 type RedisConfig struct {

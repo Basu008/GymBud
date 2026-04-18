@@ -55,10 +55,10 @@ func (a *API) setUpRoutes() {
 }
 
 func (a *API) requestHandler(h func(*handler.RequestCtx, http.ResponseWriter, *http.Request)) http.Handler {
-	return a.wrapHandler(h, false, false, false)
+	return a.wrapHandler(h, false)
 }
 
-func (a *API) wrapHandler(h func(*handler.RequestCtx, http.ResponseWriter, *http.Request), isLoggedIn, isPremium, isAdmin bool) http.Handler {
+func (a *API) wrapHandler(h func(*handler.RequestCtx, http.ResponseWriter, *http.Request), isLoggedIn bool) http.Handler {
 	var authFunc handler.TokenAuth
 	if a.TokenAuth != nil {
 		authFunc = a.TokenAuth
@@ -67,7 +67,5 @@ func (a *API) wrapHandler(h func(*handler.RequestCtx, http.ResponseWriter, *http
 		HandlerFunc: h,
 		AuthFunc:    authFunc,
 		IsLoggedIn:  isLoggedIn,
-		IsPremium:   isPremium,
-		IsAdmin:     isAdmin,
 	}
 }
