@@ -24,7 +24,15 @@ type Server struct {
 	API *api.API
 }
 
-func NewServer()
+func NewServer() *Server {
+	c := config.GetConfig()
+
+	server := Server{
+		httpServer: &http.Server{},
+		Config:     c,
+	}
+	return &server
+}
 
 func InitLogger()
 

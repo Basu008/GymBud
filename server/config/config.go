@@ -46,7 +46,7 @@ type MiddleWareConfig struct {
 type AdditionalConfig struct {
 }
 
-func LoadConfig() Config {
+func GetConfig() *Config {
 	var cfg Config
 
 	v := viper.New()
@@ -61,5 +61,5 @@ func LoadConfig() Config {
 		log.Fatalf("failed to unmarshal config: %v", err)
 	}
 
-	return cfg
+	return &cfg
 }
