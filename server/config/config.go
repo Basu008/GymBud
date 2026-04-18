@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -17,13 +18,15 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	ListenAddress      string `mapstructure:"listenAddress"`
-	Port               string `mapstructure:"port"`
-	WorkerPort         string `mapstructure:"workerPort"`
-	ReadTimeout        string `mapstructure:"readTimeout"`
-	WriteTimeout       string `mapstructure:"writeTimeout"`
-	Environment        string `mapstructure:"environment"`
-	CORSAllowedOrigins string `mapstructure:"corsAllowedOrigins"`
+	ListenAddress      string        `mapstructure:"listenAddress"`
+	Port               string        `mapstructure:"port"`
+	WorkerPort         string        `mapstructure:"workerPort"`
+	ReadTimeout        time.Duration `mapstructure:"readTimeout"`
+	WriteTimeout       time.Duration `mapstructure:"writeTimeout"`
+	Environment        string        `mapstructure:"environment"`
+	CORSAllowedOrigins []string      `mapstructure:"corsAllowedOrigins"`
+	CORSAllowedMethods []string      `mapstructure:"corsAllowedMethods"`
+	CORSAllowedHeaders []string      `mapstructure:"corsAllowedHeaders"`
 }
 
 type TokenAuthConfig struct {
@@ -50,7 +53,11 @@ func GetConfig() *Config {
 	var cfg Config
 
 	v := viper.New()
-	v.SetConfigFile("conf/default.toml")
+	v.SetConfigName("default")
+	v.AddConfigPath("../conf")
+	v.AddConfigPath("../../conf")
+	v.AddConfigPath(".")
+	v.AddConfigPath("./conf/")
 	v.SetConfigType("toml")
 
 	if err := v.ReadInConfig(); err != nil {
