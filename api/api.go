@@ -50,7 +50,7 @@ func NewApi(opts *Options) *API {
 
 func (a *API) setUpRoutes() {
 	a.Router.Root = a.MainRouter
-	a.Router.APIRoot = a.MainRouter.PathPrefix("/api").Subrouter()
+	a.Router.APIRoot = a.MainRouter.PathPrefix("/v1/api").Subrouter()
 	a.InitRoutes()
 }
 

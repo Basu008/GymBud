@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/Basu008/GymBud/app/user"
 	"github.com/Basu008/GymBud/server/config"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -12,6 +13,9 @@ type App struct {
 	Config   *config.Config
 	Postgres *pgxpool.Pool
 	Redis    *redis.Client
+
+	//Services
+	UserService *user.Service
 }
 
 type Options struct {
