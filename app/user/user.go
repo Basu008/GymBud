@@ -18,17 +18,6 @@ func (s *Service) SignUpUser(ctx context.Context, opts *schema.SignUpUserBody) e
 	username := strings.TrimSpace(opts.Username)
 	email := strings.TrimSpace(opts.Email)
 	password := strings.TrimSpace(opts.Password)
-
-	if username == "" {
-		return errors.New("username is required")
-	}
-	if email == "" {
-		return errors.New("email is required")
-	}
-	if password == "" {
-		return errors.New("password is required")
-	}
-
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return err

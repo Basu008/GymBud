@@ -24,6 +24,10 @@ func OK(w http.ResponseWriter, payload any) {
 	Success(w, http.StatusOK, payload)
 }
 
+func Created(w http.ResponseWriter, payload any) {
+	Success(w, http.StatusCreated, payload)
+}
+
 func BadRequest(w http.ResponseWriter, message string) {
 	Error(w, http.StatusBadRequest, message)
 }
