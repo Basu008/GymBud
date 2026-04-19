@@ -7,6 +7,7 @@ import (
 	"github.com/Basu008/GymBud/app"
 	"github.com/Basu008/GymBud/server/config"
 	"github.com/Basu008/GymBud/server/handler"
+	"github.com/Basu008/GymBud/server/validator"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 )
@@ -17,6 +18,7 @@ type API struct {
 	Logger     *zerolog.Logger
 	Config     *config.Config
 	TokenAuth  handler.TokenAuth
+	Validator  *validator.Validator
 	Mutex      *sync.Mutex
 	App        *app.App
 }
@@ -26,6 +28,7 @@ type Options struct {
 	Logger     *zerolog.Logger
 	Config     *config.Config
 	TokenAuth  handler.TokenAuth
+	Validator  *validator.Validator
 	App        *app.App
 }
 
@@ -41,6 +44,7 @@ func NewApi(opts *Options) *API {
 		Logger:     opts.Logger,
 		TokenAuth:  opts.TokenAuth,
 		Config:     opts.Config,
+		Validator:  opts.Validator,
 		Mutex:      &sync.Mutex{},
 		App:        opts.App,
 	}
@@ -52,6 +56,17 @@ func (a *API) setUpRoutes() {
 	a.Router.Root = a.MainRouter
 	a.Router.APIRoot = a.MainRouter.PathPrefix("/v1/api").Subrouter()
 	a.InitRoutes()
+}
+
+func (a *API) validateBody(w http.ResponseWriter, v interface{}) bool {
+	if a.Validator == nil || a.Validator.V == nil {
+		return true
+	}
+	if errs := a.Validator.Validate(v); len(errs) > 0 {
+		handler.BadRequestMulti(w, errs)
+		return false
+	}
+	return true
 }
 
 func (a *API) requestHandler(h func(*handler.RequestCtx, http.ResponseWriter, *http.Request)) http.Handler {

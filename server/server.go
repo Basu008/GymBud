@@ -13,6 +13,7 @@ import (
 	"github.com/Basu008/GymBud/server/database"
 	"github.com/Basu008/GymBud/server/logger"
 	"github.com/Basu008/GymBud/server/middleware"
+	"github.com/Basu008/GymBud/server/validator"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -66,6 +67,7 @@ func NewServer() *Server {
 		Logger:     &apiLogger,
 		Config:     c,
 		App:        a,
+		Validator:  validator.NewValidator(),
 		TokenAuth:  auth.NewAuthService(&auth.Options{Config: c, Redis: server.Redis}),
 	})
 

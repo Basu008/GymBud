@@ -15,12 +15,25 @@ type ErrorResponse struct {
 	Error   string `json:"error"`
 }
 
+type MultiErrorResponse struct {
+	Success bool     `json:"success"`
+	Errors  []string `json:"error"`
+}
+
 func OK(w http.ResponseWriter, payload any) {
 	Success(w, http.StatusOK, payload)
 }
 
 func BadRequest(w http.ResponseWriter, message string) {
 	Error(w, http.StatusBadRequest, message)
+}
+
+func BadRequestMulti(w http.ResponseWriter, errs []error) {
+	var messages []string
+	for _, err := range errs {
+		messages = append(messages, err.Error())
+	}
+	Errors(w, http.StatusBadRequest, messages)
 }
 
 func NotFound(w http.ResponseWriter, message string) {
@@ -37,6 +50,10 @@ func Success(w http.ResponseWriter, statusCode int, payload any) {
 
 func Error(w http.ResponseWriter, statusCode int, message string) {
 	writeJSON(w, statusCode, ErrorResponse{Success: false, Error: message})
+}
+
+func Errors(w http.ResponseWriter, statusCode int, messages []string) {
+	writeJSON(w, statusCode, MultiErrorResponse{Success: false, Errors: messages})
 }
 
 func writeJSON(w http.ResponseWriter, statusCode int, data any) {
