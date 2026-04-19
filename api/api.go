@@ -58,6 +58,10 @@ func (a *API) requestHandler(h func(*handler.RequestCtx, http.ResponseWriter, *h
 	return a.wrapHandler(h, false)
 }
 
+func (a *API) requestAuthHandler(h func(*handler.RequestCtx, http.ResponseWriter, *http.Request)) http.Handler {
+	return a.wrapHandler(h, true)
+}
+
 func (a *API) wrapHandler(h func(*handler.RequestCtx, http.ResponseWriter, *http.Request), isLoggedIn bool) http.Handler {
 	var authFunc handler.TokenAuth
 	if a.TokenAuth != nil {

@@ -31,8 +31,9 @@ type ServerConfig struct {
 }
 
 type TokenAuthConfig struct {
-	JWTSignKey   string `mapstructure:"jwtSignKey"`
+	JWTSecret    string `mapstructure:"jwtSecret"`
 	JWTExpiresAt string `mapstructure:"jwtExpiresAt"`
+	JWTIssuer    string `mapstructure:"jwtIssuer"`
 }
 
 type MongoDatabaseConfig struct {

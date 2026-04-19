@@ -8,6 +8,7 @@ import (
 
 	"github.com/Basu008/GymBud/api"
 	"github.com/Basu008/GymBud/app"
+	"github.com/Basu008/GymBud/server/auth"
 	"github.com/Basu008/GymBud/server/config"
 	"github.com/Basu008/GymBud/server/database"
 	"github.com/Basu008/GymBud/server/logger"
@@ -65,6 +66,7 @@ func NewServer() *Server {
 		Logger:     &apiLogger,
 		Config:     c,
 		App:        a,
+		TokenAuth:  auth.NewAuthService(&auth.Options{Config: c, Redis: server.Redis}),
 	})
 
 	return &server
