@@ -60,6 +60,9 @@ func NewServer() *Server {
 		Config:   c,
 		Postgres: server.Postgres,
 	})
+	if err := app.InitService(a); err != nil {
+		server.Log.Fatal().Err(err).Msg("failed to initialize services")
+	}
 
 	apiLogger := server.Log.With().Str("type", "api").Logger()
 	server.API = api.NewApi(&api.Options{
@@ -70,7 +73,6 @@ func NewServer() *Server {
 		Validator:  validator.NewValidator(),
 		TokenAuth:  auth.NewAuthService(&auth.Options{Config: c, Redis: server.Redis}),
 	})
-
 	return &server
 }
 

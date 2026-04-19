@@ -5,10 +5,12 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/Basu008/GymBud/model/user"
+	modeluser "github.com/Basu008/GymBud/model/user"
 	"github.com/Basu008/GymBud/schema"
 	"golang.org/x/crypto/bcrypt"
 )
+
+var ErrUsernameAlreadyExists = errors.New("username already exists")
 
 func (s *Service) SignUpUser(ctx context.Context, opts *schema.SignUpUserBody) error {
 	if opts == nil {
@@ -18,17 +20,27 @@ func (s *Service) SignUpUser(ctx context.Context, opts *schema.SignUpUserBody) e
 	username := strings.TrimSpace(opts.Username)
 	email := strings.TrimSpace(opts.Email)
 	password := strings.TrimSpace(opts.Password)
+	displayName := strings.TrimSpace(opts.DisplayName)
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 
-	user := user.User{
+	user := modeluser.User{
 		Username:     username,
 		Email:        email,
 		PasswordHash: string(passwordHash),
-		DisplayName:  opts.DisplayName,
+		DisplayName:  displayName,
+		IsActive:     true,
+		IsVerified:   false,
 	}
 
-	return s.repo.Create(ctx, &user)
+	if err := s.repo.Create(ctx, &user); err != nil {
+		if errors.Is(err, modeluser.ErrUsernameAlreadyExists) {
+			return ErrUsernameAlreadyExists
+		}
+		return err
+	}
+
+	return nil
 }

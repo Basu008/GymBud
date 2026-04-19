@@ -1,15 +1,23 @@
 package app
 
 import (
+	"fmt"
+
 	"github.com/Basu008/GymBud/app/user"
 	"github.com/Basu008/GymBud/db/postgres"
 )
 
-func InitService(a *App) {
+func InitService(a *App) error {
 	postgresDB := a.Postgres
 
+	userRepo, err := postgres.NewUserRepo(postgresDB)
+	if err != nil {
+		return fmt.Errorf("init user repository: %w", err)
+	}
 	a.UserService = user.NewUserService(&user.Opts{
-		Repo:   postgres.NewUserRepo(postgresDB),
+		Repo:   userRepo,
 		Logger: a.Logger,
 	})
+
+	return nil
 }

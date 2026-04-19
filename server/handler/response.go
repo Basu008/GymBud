@@ -44,6 +44,10 @@ func NotFound(w http.ResponseWriter, message string) {
 	Error(w, http.StatusNotFound, message)
 }
 
+func Conflict(w http.ResponseWriter, message string) {
+	Error(w, http.StatusConflict, message)
+}
+
 func InternalServerError(w http.ResponseWriter, message string) {
 	Error(w, http.StatusInternalServerError, message)
 }
