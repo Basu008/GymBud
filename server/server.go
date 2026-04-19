@@ -14,6 +14,7 @@ import (
 	"github.com/Basu008/GymBud/server/middleware"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/cors"
 	"github.com/rs/zerolog"
 	"github.com/urfave/negroni/v3"
@@ -30,6 +31,7 @@ type Server struct {
 	Config     *config.Config
 
 	Postgres *pgxpool.Pool
+	Redis    *redis.Client
 
 	API *api.API
 }
@@ -45,6 +47,7 @@ func NewServer() *Server {
 	server.InitLogger()
 
 	server.Postgres = database.NewPostgresPool(c.PostgresDatabaseConfig)
+	server.Redis = database.NewRedisClient(c.RedisConfig)
 
 	r := mux.NewRouter()
 	server.Router = r
@@ -128,6 +131,11 @@ func (s *Server) StopServer() {
 	s.httpServer.Shutdown(ctx)
 	if s.Postgres != nil {
 		s.Postgres.Close()
+	}
+	if s.Redis != nil {
+		if err := s.Redis.Close(); err != nil {
+			s.Log.Error().Err(err).Msg("failed to close redis client")
+		}
 	}
 	s.Log.Debug().Msg("Server shut down complete")
 }

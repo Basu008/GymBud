@@ -11,17 +11,7 @@ import (
 )
 
 func NewPostgresPool(cfg config.PostgresDatabaseConfig) *pgxpool.Pool {
-	dsn := fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		cfg.Host,
-		cfg.Port,
-		cfg.User,
-		cfg.Password,
-		cfg.Database,
-		cfg.SSLMode,
-	)
-
-	poolConfig, err := pgxpool.ParseConfig(dsn)
+	poolConfig, err := pgxpool.ParseConfig(cfg.ConnectionDSN())
 	if err != nil {
 		log.Fatalf("failed to parse postgres config: %s", err.Error())
 	}

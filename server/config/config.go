@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -50,7 +51,26 @@ type PostgresDatabaseConfig struct {
 	HealthCheckTime time.Duration `mapstructure:"healthCheckTime"`
 }
 
+func (pdc *PostgresDatabaseConfig) ConnectionDSN() string {
+	dsn := fmt.Sprintf(
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		pdc.Host,
+		pdc.Port,
+		pdc.User,
+		pdc.Password,
+		pdc.Database,
+		pdc.SSLMode,
+	)
+	return dsn
+}
+
 type RedisConfig struct {
+	Address        string        `mapstructure:"address"`
+	Password       string        `mapstructure:"password"`
+	Database       int           `mapstructure:"database"`
+	ConnectTimeout time.Duration `mapstructure:"connectTimeout"`
+	ReadTimeout    time.Duration `mapstructure:"readTimeout"`
+	WriteTimeout   time.Duration `mapstructure:"writeTimeout"`
 }
 
 type MiddleWareConfig struct {
