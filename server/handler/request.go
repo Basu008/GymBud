@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -40,19 +41,28 @@ func (rh *Request) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			http.Error(w, "missing authorization header", http.StatusUnauthorized)
+			Unauthorized(w, auth.ErrLoginRequired.Error())
 			return
 		}
 
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
-			http.Error(w, "invalid authorization header", http.StatusUnauthorized)
+			Unauthorized(w, auth.ErrInvalidAccessToken.Error())
 			return
 		}
 
 		user, err := rh.AuthFunc.AuthenticateRequest(parts[1])
 		if err != nil {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			switch {
+			case errors.Is(err, auth.ErrAccessTokenExpired):
+				Unauthorized(w, auth.ErrAccessTokenExpired.Error())
+			case errors.Is(err, auth.ErrSessionExpired):
+				Unauthorized(w, auth.ErrSessionExpired.Error())
+			case errors.Is(err, auth.ErrLoginRequired):
+				Unauthorized(w, auth.ErrLoginRequired.Error())
+			default:
+				Unauthorized(w, auth.ErrInvalidAccessToken.Error())
+			}
 			return
 		}
 

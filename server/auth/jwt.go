@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/base64"
+	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -19,6 +20,9 @@ type JWTManager struct {
 	secret []byte
 	issuer string
 }
+
+var ErrAccessTokenExpired = errors.New("access token expired")
+var ErrInvalidAccessToken = errors.New("invalid access token")
 
 func NewJWTManager(secret, issuer string) *JWTManager {
 	return &JWTManager{
@@ -50,26 +54,37 @@ func (j *JWTManager) GenerateToken(userID, plan, sessionID, tokenType string, tt
 		return "", err
 	}
 
-	return base64.StdEncoding.EncodeToString([]byte(signedToken)), nil
+	return encodeToken(signedToken), nil
 }
 
 func (j *JWTManager) ParseToken(tokenStr string) (*UserClaims, error) {
-	decodedToken, err := base64.StdEncoding.DecodeString(tokenStr)
+	decodedToken, err := decodeToken(tokenStr)
 	if err != nil {
-		return nil, err
+		return nil, ErrInvalidAccessToken
 	}
 
 	token, err := jwt.ParseWithClaims(string(decodedToken), &UserClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return j.secret, nil
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 	if err != nil {
-		return nil, err
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, ErrAccessTokenExpired
+		}
+		return nil, ErrInvalidAccessToken
 	}
 
 	claims, ok := token.Claims.(*UserClaims)
 	if !ok || !token.Valid {
-		return nil, jwt.ErrTokenInvalidClaims
+		return nil, ErrInvalidAccessToken
 	}
 
 	return claims, nil
+}
+
+func encodeToken(token string) string {
+	return base64.StdEncoding.EncodeToString([]byte(token))
+}
+
+func decodeToken(token string) ([]byte, error) {
+	return base64.StdEncoding.DecodeString(token)
 }

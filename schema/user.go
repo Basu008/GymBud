@@ -1,14 +1,15 @@
 package schema
 
 import (
+	"time"
+
 	modeluser "github.com/Basu008/GymBud/model/user"
 )
 
 type SignUpUserBody struct {
-	Username    string `json:"username" validate:"required"`
-	Email       string `json:"email" validate:"required"`
-	Password    string `json:"password" validate:"required"`
-	DisplayName string `json:"display_name" validate:"required"`
+	Username string `json:"username" validate:"required"`
+	Email    string `json:"email" validate:"required"`
+	Password string `json:"password" validate:"required"`
 }
 
 type LoginUserBody struct {
@@ -16,10 +17,34 @@ type LoginUserBody struct {
 	Password string `json:"password" validate:"required"`
 }
 
+type UpdateUserBody struct {
+	DisplayName     *string `json:"display_name"`
+	Plan            *string `json:"plan"`
+	Bio             *string `json:"bio"`
+	Gender          *string `json:"gender" validate:"oneof=M F"`
+	DateOfBirth     *string `json:"date_of_birth"`
+	ProfileImageURL *string `json:"profile_image_url"`
+}
+
+type UpdateUserInput struct {
+	DisplayName     *string
+	Plan            *string
+	Bio             *string
+	Gender          *string
+	DateOfBirth     *time.Time
+	ProfileImageURL *string
+}
+
+type UpdatePrivacyBody struct {
+	IsPrivate bool `json:"is_private"`
+}
+
+type UpdateActiveBody struct {
+	IsActive bool `json:"is_active"`
+}
+
 type LoginUserResponse struct {
-	User            *modeluser.User `json:"user"`
-	RefreshToken    string          `json:"refresh_token"`
-	AccessToken     string          `json:"access_token"`
-	AccessTokenTTL  int64           `json:"access_token_ttl_seconds"`
-	RefreshTokenTTL int64           `json:"refresh_token_ttl_seconds"`
+	User           *modeluser.User `json:"user"`
+	AccessToken    string          `json:"access_token"`
+	AccessTokenTTL int64           `json:"access_token_ttl_seconds"`
 }

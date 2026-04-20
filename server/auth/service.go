@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Basu008/GymBud/server/config"
@@ -32,7 +33,6 @@ func (u *AuthUser) CanAccessPremium() bool {
 type Session struct {
 	SessionID    string    `json:"session_id"`
 	UserID       string    `json:"user_id"`
-	Role         string    `json:"role"`
 	Plan         string    `json:"plan"`
 	RefreshToken string    `json:"refresh_token"`
 	CreatedAt    time.Time `json:"created_at"`
@@ -46,6 +46,9 @@ type AuthService struct {
 	accessTokenTTL  time.Duration
 	refreshTokenTTL time.Duration
 }
+
+var ErrSessionExpired = errors.New("session expired, please log in again")
+var ErrLoginRequired = errors.New("login required")
 
 type LoginSession struct {
 	SessionID        string    `json:"session_id"`
@@ -64,7 +67,7 @@ type Options struct {
 
 func NewAuthService(opts *Options) *AuthService {
 	tokenAuthConfig := opts.Config.TokenAuthConfig
-	accessTokenTTL := 15 * time.Minute
+	accessTokenTTL := 90 * 24 * time.Hour
 	if tokenAuthConfig.JWTExpiresAt != "" {
 		if parsedTTL, err := time.ParseDuration(tokenAuthConfig.JWTExpiresAt); err == nil && parsedTTL > 0 {
 			accessTokenTTL = parsedTTL
@@ -141,12 +144,15 @@ func (s *AuthService) AuthenticateRequest(token string) (*AuthUser, error) {
 	}
 
 	if claims.TokenType != "access" {
-		return nil, errors.New("invalid token type")
+		return nil, ErrInvalidAccessToken
 	}
 
 	val, err := s.redis.Get(context.Background(), sessionKey(claims.SessionID)).Result()
 	if err != nil {
-		return nil, errors.New("session not found")
+		if errors.Is(err, redis.Nil) {
+			return nil, ErrSessionExpired
+		}
+		return nil, err
 	}
 
 	var session Session
@@ -155,7 +161,7 @@ func (s *AuthService) AuthenticateRequest(token string) (*AuthUser, error) {
 	}
 
 	if session.UserID != claims.UserID || session.Plan != claims.Plan {
-		return nil, errors.New("session mismatch")
+		return nil, ErrInvalidAccessToken
 	}
 
 	return &AuthUser{
@@ -163,4 +169,12 @@ func (s *AuthService) AuthenticateRequest(token string) (*AuthUser, error) {
 		Plan:      claims.Plan,
 		SessionID: claims.SessionID,
 	}, nil
+}
+
+func (s *AuthService) LogoutSession(ctx context.Context, sessionID string) error {
+	if strings.TrimSpace(sessionID) == "" {
+		return errors.New("session id is required")
+	}
+
+	return s.redis.Del(ctx, sessionKey(sessionID)).Err()
 }
