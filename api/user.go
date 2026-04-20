@@ -32,3 +32,26 @@ func (a *API) signUp(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Req
 	}
 	handler.Created(w, true)
 }
+
+func (a *API) login(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
+	var body schema.LoginUserBody
+	if err := handler.BindJSON(r, &body); err != nil {
+		handler.BadRequest(w, err.Error())
+		return
+	}
+	if !a.validateBody(w, &body) {
+		return
+	}
+
+	response, err := a.App.UserService.LoginUser(r.Context(), &body)
+	if err != nil {
+		if errors.Is(err, appuser.ErrInvalidCredentials) {
+			handler.Unauthorized(w, err.Error())
+			return
+		}
+		handler.InternalServerError(w, err.Error())
+		return
+	}
+
+	handler.OK(w, response)
+}

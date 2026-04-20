@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/Basu008/GymBud/app/user"
+	"github.com/Basu008/GymBud/server/auth"
 	"github.com/Basu008/GymBud/server/config"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -16,6 +17,7 @@ type App struct {
 
 	//Services
 	UserService *user.Service
+	AuthService *auth.AuthService
 }
 
 type Options struct {

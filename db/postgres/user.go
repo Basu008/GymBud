@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Basu008/GymBud/model/user"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -39,6 +40,7 @@ func (r *UserRepo) initTable() error {
 			email VARCHAR UNIQUE NOT NULL,
 			password_hash TEXT NOT NULL,
 			display_name VARCHAR NOT NULL,
+			plan VARCHAR NOT NULL DEFAULT 'free',
 			bio TEXT,
 			gender VARCHAR(20),
 			date_of_birth DATE,
@@ -55,6 +57,10 @@ func (r *UserRepo) initTable() error {
 		return fmt.Errorf("create users table: %w", err)
 	}
 
+	if _, err := r.db.Exec(ctx, `ALTER TABLE public.users ADD COLUMN IF NOT EXISTS plan VARCHAR NOT NULL DEFAULT 'free'`); err != nil {
+		return fmt.Errorf("ensure users.plan column: %w", err)
+	}
+
 	return nil
 }
 
@@ -69,6 +75,7 @@ func (r *UserRepo) Create(ctx context.Context, u *user.User) error {
 			email,
 			password_hash,
 			display_name,
+			plan,
 			bio,
 			gender,
 			date_of_birth,
@@ -77,8 +84,8 @@ func (r *UserRepo) Create(ctx context.Context, u *user.User) error {
 			is_active,
 			is_verified
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-		RETURNING id, created_at, updated_at, is_active, is_verified
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		RETURNING id, created_at, updated_at, plan, is_active, is_verified
 	`
 
 	err := r.db.QueryRow(
@@ -88,6 +95,7 @@ func (r *UserRepo) Create(ctx context.Context, u *user.User) error {
 		u.Email,
 		u.PasswordHash,
 		u.DisplayName,
+		u.Plan,
 		u.Bio,
 		u.Gender,
 		u.DateOfBirth,
@@ -95,7 +103,7 @@ func (r *UserRepo) Create(ctx context.Context, u *user.User) error {
 		u.IsPrivate,
 		u.IsActive,
 		u.IsVerified,
-	).Scan(&u.ID, &u.CreatedAt, &u.UpdatedAt, &u.IsActive, &u.IsVerified)
+	).Scan(&u.ID, &u.CreatedAt, &u.UpdatedAt, &u.Plan, &u.IsActive, &u.IsVerified)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" && strings.Contains(strings.ToLower(pgErr.ConstraintName), "username") {
@@ -105,4 +113,54 @@ func (r *UserRepo) Create(ctx context.Context, u *user.User) error {
 	}
 
 	return nil
+}
+
+func (r *UserRepo) GetByUsername(ctx context.Context, username string) (*user.User, error) {
+	const query = `
+		SELECT
+			id,
+			username,
+			email,
+			password_hash,
+			display_name,
+			plan,
+			bio,
+			gender,
+			date_of_birth,
+			profile_image_url,
+			is_private,
+			is_active,
+			is_verified,
+			created_at,
+			updated_at
+		FROM users
+		WHERE username = $1
+	`
+
+	var u user.User
+	err := r.db.QueryRow(ctx, query, username).Scan(
+		&u.ID,
+		&u.Username,
+		&u.Email,
+		&u.PasswordHash,
+		&u.DisplayName,
+		&u.Plan,
+		&u.Bio,
+		&u.Gender,
+		&u.DateOfBirth,
+		&u.ProfileImageURL,
+		&u.IsPrivate,
+		&u.IsActive,
+		&u.IsVerified,
+		&u.CreatedAt,
+		&u.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, user.ErrUserNotFound
+		}
+		return nil, fmt.Errorf("get user by username: %w", err)
+	}
+
+	return &u, nil
 }

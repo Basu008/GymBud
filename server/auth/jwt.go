@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"encoding/base64"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -8,7 +9,6 @@ import (
 
 type UserClaims struct {
 	UserID    string `json:"uid"`
-	Role      string `json:"role"`
 	Plan      string `json:"plan"`
 	SessionID string `json:"sid"`
 	TokenType string `json:"typ"`
@@ -27,12 +27,11 @@ func NewJWTManager(secret, issuer string) *JWTManager {
 	}
 }
 
-func (j *JWTManager) GenerateToken(userID, role, plan, sessionID, tokenType string, ttl time.Duration) (string, error) {
+func (j *JWTManager) GenerateToken(userID, plan, sessionID, tokenType string, ttl time.Duration) (string, error) {
 	now := time.Now()
 
 	claims := UserClaims{
 		UserID:    userID,
-		Role:      role,
 		Plan:      plan,
 		SessionID: sessionID,
 		TokenType: tokenType,
@@ -46,11 +45,21 @@ func (j *JWTManager) GenerateToken(userID, role, plan, sessionID, tokenType stri
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(j.secret)
+	signedToken, err := token.SignedString(j.secret)
+	if err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString([]byte(signedToken)), nil
 }
 
 func (j *JWTManager) ParseToken(tokenStr string) (*UserClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenStr, &UserClaims{}, func(token *jwt.Token) (interface{}, error) {
+	decodedToken, err := base64.StdEncoding.DecodeString(tokenStr)
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := jwt.ParseWithClaims(string(decodedToken), &UserClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return j.secret, nil
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 	if err != nil {

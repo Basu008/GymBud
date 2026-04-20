@@ -53,13 +53,16 @@ func NewServer() *Server {
 
 	r := mux.NewRouter()
 	server.Router = r
+	authService := auth.NewAuthService(&auth.Options{Config: c, Redis: server.Redis})
 
 	appLogger := server.Log.With().Str("type", "app").Logger()
 	a := app.NewApp(&app.Options{
 		Logger:   &appLogger,
 		Config:   c,
 		Postgres: server.Postgres,
+		Redis:    server.Redis,
 	})
+	a.AuthService = authService
 	if err := app.InitService(a); err != nil {
 		server.Log.Fatal().Err(err).Msg("failed to initialize services")
 	}
@@ -71,7 +74,7 @@ func NewServer() *Server {
 		Config:     c,
 		App:        a,
 		Validator:  validator.NewValidator(),
-		TokenAuth:  auth.NewAuthService(&auth.Options{Config: c, Redis: server.Redis}),
+		TokenAuth:  authService,
 	})
 	return &server
 }

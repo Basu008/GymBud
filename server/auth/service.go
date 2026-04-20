@@ -10,19 +10,15 @@ import (
 	"time"
 
 	"github.com/Basu008/GymBud/server/config"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
 
 type AuthUser struct {
 	UserID    string
-	Role      string
 	Plan      string
 	SessionID string
-}
-
-func (u *AuthUser) IsAdmin() bool {
-	return u != nil && u.Role == "admin"
 }
 
 func (u *AuthUser) IsPremium() bool {
@@ -30,7 +26,7 @@ func (u *AuthUser) IsPremium() bool {
 }
 
 func (u *AuthUser) CanAccessPremium() bool {
-	return u != nil && (u.IsPremium() || u.IsAdmin())
+	return u != nil && u.IsPremium()
 }
 
 type Session struct {
@@ -51,6 +47,15 @@ type AuthService struct {
 	refreshTokenTTL time.Duration
 }
 
+type LoginSession struct {
+	SessionID        string    `json:"session_id"`
+	RefreshToken     string    `json:"refresh_token"`
+	AccessToken      string    `json:"access_token"`
+	AccessTokenTTL   int64     `json:"access_token_ttl_seconds"`
+	RefreshTokenTTL  int64     `json:"refresh_token_ttl_seconds"`
+	SessionExpiresAt time.Time `json:"session_expires_at"`
+}
+
 type Options struct {
 	Config   *config.Config
 	Redis    *redis.Client
@@ -59,11 +64,17 @@ type Options struct {
 
 func NewAuthService(opts *Options) *AuthService {
 	tokenAuthConfig := opts.Config.TokenAuthConfig
+	accessTokenTTL := 15 * time.Minute
+	if tokenAuthConfig.JWTExpiresAt != "" {
+		if parsedTTL, err := time.ParseDuration(tokenAuthConfig.JWTExpiresAt); err == nil && parsedTTL > 0 {
+			accessTokenTTL = parsedTTL
+		}
+	}
 	return &AuthService{
 		jwtManager: NewJWTManager(tokenAuthConfig.JWTSecret, tokenAuthConfig.JWTIssuer),
 		redis:      opts.Redis,
 		// postgres:        opts.Postgres,
-		accessTokenTTL:  15 * time.Minute,
+		accessTokenTTL:  accessTokenTTL,
 		refreshTokenTTL: 7 * 24 * time.Hour,
 	}
 }
@@ -78,6 +89,49 @@ func generateSecureToken(n int) (string, error) {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+func (s *AuthService) CreateLoginSession(ctx context.Context, userID, plan string) (*LoginSession, error) {
+
+	sessionID := uuid.NewString()
+	refreshToken, err := generateSecureToken(32)
+	if err != nil {
+		return nil, err
+	}
+
+	accessToken, err := s.jwtManager.GenerateToken(userID, plan, sessionID, "access", s.accessTokenTTL)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	sessionExpiresAt := now.Add(s.refreshTokenTTL)
+	session := Session{
+		SessionID:    sessionID,
+		UserID:       userID,
+		Plan:         plan,
+		RefreshToken: refreshToken,
+		CreatedAt:    now,
+		ExpiresAt:    sessionExpiresAt,
+	}
+
+	rawSession, err := json.Marshal(session)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.redis.Set(ctx, sessionKey(sessionID), rawSession, s.refreshTokenTTL).Err(); err != nil {
+		return nil, err
+	}
+
+	return &LoginSession{
+		SessionID:        sessionID,
+		RefreshToken:     refreshToken,
+		AccessToken:      accessToken,
+		AccessTokenTTL:   int64(s.accessTokenTTL.Seconds()),
+		RefreshTokenTTL:  int64(s.refreshTokenTTL.Seconds()),
+		SessionExpiresAt: sessionExpiresAt,
+	}, nil
 }
 
 func (s *AuthService) AuthenticateRequest(token string) (*AuthUser, error) {
@@ -100,13 +154,12 @@ func (s *AuthService) AuthenticateRequest(token string) (*AuthUser, error) {
 		return nil, err
 	}
 
-	if session.UserID != claims.UserID || session.Role != claims.Role || session.Plan != claims.Plan {
+	if session.UserID != claims.UserID || session.Plan != claims.Plan {
 		return nil, errors.New("session mismatch")
 	}
 
 	return &AuthUser{
 		UserID:    claims.UserID,
-		Role:      claims.Role,
 		Plan:      claims.Plan,
 		SessionID: claims.SessionID,
 	}, nil

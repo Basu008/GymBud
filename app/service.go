@@ -15,8 +15,9 @@ func InitService(a *App) error {
 		return fmt.Errorf("init user repository: %w", err)
 	}
 	a.UserService = user.NewUserService(&user.Opts{
-		Repo:   userRepo,
-		Logger: a.Logger,
+		Repo:        userRepo,
+		Logger:      a.Logger,
+		AuthService: a.AuthService,
 	})
 
 	return nil

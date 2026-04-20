@@ -32,6 +32,10 @@ func BadRequest(w http.ResponseWriter, message string) {
 	Error(w, http.StatusBadRequest, message)
 }
 
+func Unauthorized(w http.ResponseWriter, message string) {
+	Error(w, http.StatusUnauthorized, message)
+}
+
 func BadRequestMulti(w http.ResponseWriter, errs []error) {
 	var messages []string
 	for _, err := range errs {

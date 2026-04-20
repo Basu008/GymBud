@@ -5,4 +5,5 @@ func (a *API) InitRoutes() {
 
 	//Users
 	a.Router.APIRoot.Handle("/auth/signup", a.requestHandler(a.signUp)).Methods("POST")
+	a.Router.APIRoot.Handle("/auth/login", a.requestHandler(a.login)).Methods("POST")
 }

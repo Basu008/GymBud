@@ -14,6 +14,7 @@ type User struct {
 	Email           string     `db:"email" json:"email"`
 	PasswordHash    string     `db:"password_hash" json:"-"`
 	DisplayName     string     `db:"display_name" json:"display_name,omitempty"`
+	Plan            string     `db:"plan" json:"plan"`
 	Bio             *string    `db:"bio" json:"bio,omitempty"`
 	Gender          *string    `db:"gender" json:"gender,omitempty"`
 	DateOfBirth     *time.Time `db:"date_of_birth" json:"date_of_birth,omitempty"`

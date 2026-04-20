@@ -11,12 +11,9 @@ import (
 )
 
 var ErrUsernameAlreadyExists = errors.New("username already exists")
+var ErrInvalidCredentials = errors.New("invalid username or password")
 
 func (s *Service) SignUpUser(ctx context.Context, opts *schema.SignUpUserBody) error {
-	if opts == nil {
-		return errors.New("signup payload is required")
-	}
-
 	username := strings.TrimSpace(opts.Username)
 	email := strings.TrimSpace(opts.Email)
 	password := strings.TrimSpace(opts.Password)
@@ -31,6 +28,7 @@ func (s *Service) SignUpUser(ctx context.Context, opts *schema.SignUpUserBody) e
 		Email:        email,
 		PasswordHash: string(passwordHash),
 		DisplayName:  displayName,
+		Plan:         "free",
 		IsActive:     true,
 		IsVerified:   false,
 	}
@@ -43,4 +41,34 @@ func (s *Service) SignUpUser(ctx context.Context, opts *schema.SignUpUserBody) e
 	}
 
 	return nil
+}
+
+func (s *Service) LoginUser(ctx context.Context, opts *schema.LoginUserBody) (*schema.LoginUserResponse, error) {
+	username := strings.TrimSpace(opts.Username)
+	password := strings.TrimSpace(opts.Password)
+
+	user, err := s.repo.GetByUsername(ctx, username)
+	if err != nil {
+		if errors.Is(err, modeluser.ErrUserNotFound) {
+			return nil, ErrInvalidCredentials
+		}
+		return nil, err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
+		return nil, ErrInvalidCredentials
+	}
+
+	session, err := s.authService.CreateLoginSession(ctx, user.ID.String(), user.Plan)
+	if err != nil {
+		return nil, err
+	}
+
+	return &schema.LoginUserResponse{
+		User:            user,
+		RefreshToken:    session.RefreshToken,
+		AccessToken:     session.AccessToken,
+		AccessTokenTTL:  session.AccessTokenTTL,
+		RefreshTokenTTL: session.RefreshTokenTTL,
+	}, nil
 }
