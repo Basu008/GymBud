@@ -54,8 +54,6 @@ func (rh *Request) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		user, err := rh.AuthFunc.AuthenticateRequest(parts[1])
 		if err != nil {
 			switch {
-			case errors.Is(err, auth.ErrAccessTokenExpired):
-				Unauthorized(w, auth.ErrAccessTokenExpired.Error())
 			case errors.Is(err, auth.ErrSessionExpired):
 				Unauthorized(w, auth.ErrSessionExpired.Error())
 			case errors.Is(err, auth.ErrLoginRequired):

@@ -69,14 +69,18 @@ func (s *Service) LoginUser(ctx context.Context, opts *schema.LoginUserBody) (*s
 		return nil, err
 	}
 
+	responseUser, err := s.buildUserResponse(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+
 	return &schema.LoginUserResponse{
-		User:           user,
-		AccessToken:    session.AccessToken,
-		AccessTokenTTL: session.AccessTokenTTL,
+		User:        responseUser,
+		AccessToken: session.AccessToken,
 	}, nil
 }
 
-func (s *Service) GetUserByID(ctx context.Context, userID string) (*modeluser.User, error) {
+func (s *Service) GetUserByID(ctx context.Context, userID string) (*schema.UserResponse, error) {
 	foundUser, err := s.repo.GetByID(ctx, strings.TrimSpace(userID))
 	if err != nil {
 		if errors.Is(err, modeluser.ErrUserNotFound) {
@@ -85,10 +89,10 @@ func (s *Service) GetUserByID(ctx context.Context, userID string) (*modeluser.Us
 		return nil, err
 	}
 
-	return foundUser, nil
+	return s.buildUserResponse(ctx, foundUser)
 }
 
-func (s *Service) UpdatePrivacy(ctx context.Context, userID string, isPrivate bool) (*modeluser.User, error) {
+func (s *Service) UpdatePrivacy(ctx context.Context, userID string, isPrivate bool) (*schema.UserResponse, error) {
 	foundUser, err := s.repo.UpdatePrivacyByID(ctx, strings.TrimSpace(userID), isPrivate)
 	if err != nil {
 		if errors.Is(err, modeluser.ErrUserNotFound) {
@@ -97,10 +101,10 @@ func (s *Service) UpdatePrivacy(ctx context.Context, userID string, isPrivate bo
 		return nil, err
 	}
 
-	return foundUser, nil
+	return s.buildUserResponse(ctx, foundUser)
 }
 
-func (s *Service) UpdateActive(ctx context.Context, userID string, isActive bool) (*modeluser.User, error) {
+func (s *Service) UpdateActive(ctx context.Context, userID string, isActive bool) (*schema.UserResponse, error) {
 	foundUser, err := s.repo.UpdateActiveByID(ctx, strings.TrimSpace(userID), isActive)
 	if err != nil {
 		if errors.Is(err, modeluser.ErrUserNotFound) {
@@ -109,10 +113,10 @@ func (s *Service) UpdateActive(ctx context.Context, userID string, isActive bool
 		return nil, err
 	}
 
-	return foundUser, nil
+	return s.buildUserResponse(ctx, foundUser)
 }
 
-func (s *Service) UpdateUser(ctx context.Context, userID string, body *schema.UpdateUserBody) (*modeluser.User, error) {
+func (s *Service) UpdateUser(ctx context.Context, userID string, body *schema.UpdateUserBody) (*schema.UserResponse, error) {
 	updates := &modeluser.UserUpdate{}
 
 	if body.DisplayName != nil {
@@ -163,7 +167,7 @@ func (s *Service) UpdateUser(ctx context.Context, userID string, body *schema.Up
 		return nil, err
 	}
 
-	return user, nil
+	return s.buildUserResponse(ctx, user)
 }
 
 func normalizeOptionalString(value string) *string {
@@ -175,4 +179,17 @@ func normalizeOptionalString(value string) *string {
 
 func (s *Service) Logout(ctx context.Context, sessionID string) error {
 	return s.authService.LogoutSession(ctx, strings.TrimSpace(sessionID))
+}
+
+func (s *Service) buildUserResponse(ctx context.Context, u *modeluser.User) (*schema.UserResponse, error) {
+	counts, err := s.socialRepo.GetFollowCounts(ctx, u.ID.String())
+	if err != nil {
+		return nil, err
+	}
+
+	return &schema.UserResponse{
+		User:           u,
+		FollowersCount: counts.Followers,
+		FollowingCount: counts.Following,
+	}, nil
 }

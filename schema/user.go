@@ -43,8 +43,18 @@ type UpdateActiveBody struct {
 	IsActive bool `json:"is_active"`
 }
 
+type UserResponse struct {
+	*modeluser.User
+	FollowersCount int64 `json:"followers_count"`
+	FollowingCount int64 `json:"following_count"`
+}
+
+type FollowActionResponse struct {
+	User         *UserResponse `json:"user"`
+	FollowStatus string        `json:"follow_status,omitempty"`
+}
+
 type LoginUserResponse struct {
-	User           *modeluser.User `json:"user"`
-	AccessToken    string          `json:"access_token"`
-	AccessTokenTTL int64           `json:"access_token_ttl_seconds"`
+	User        *UserResponse `json:"user"`
+	AccessToken string        `json:"access_token"`
 }

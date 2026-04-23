@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	appsocial "github.com/Basu008/GymBud/app/social"
 	appuser "github.com/Basu008/GymBud/app/user"
 	"github.com/Basu008/GymBud/schema"
 	"github.com/Basu008/GymBud/server/handler"
@@ -80,6 +81,36 @@ func (a *API) updatePrivacy(ctx *handler.RequestCtx, w http.ResponseWriter, r *h
 	response, err := a.App.UserService.UpdatePrivacy(r.Context(), ctx.UserClaim.UserID, body.IsPrivate)
 	if err != nil {
 		if errors.Is(err, appuser.ErrUserNotFound) {
+			handler.NotFound(w, err.Error())
+			return
+		}
+		handler.BadRequest(w, err.Error())
+		return
+	}
+
+	handler.OK(w, response)
+}
+
+func (a *API) followUser(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
+	userID := mux.Vars(r)["id"]
+	response, err := a.App.SocialService.FollowUser(r.Context(), ctx.UserClaim.UserID, userID)
+	if err != nil {
+		if errors.Is(err, appsocial.ErrUserNotFound) {
+			handler.NotFound(w, err.Error())
+			return
+		}
+		handler.BadRequest(w, err.Error())
+		return
+	}
+
+	handler.OK(w, response)
+}
+
+func (a *API) unfollowUser(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
+	userID := mux.Vars(r)["id"]
+	response, err := a.App.SocialService.UnfollowUser(r.Context(), ctx.UserClaim.UserID, userID)
+	if err != nil {
+		if errors.Is(err, appsocial.ErrUserNotFound) {
 			handler.NotFound(w, err.Error())
 			return
 		}

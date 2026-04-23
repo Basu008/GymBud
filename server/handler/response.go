@@ -52,6 +52,10 @@ func Conflict(w http.ResponseWriter, message string) {
 	Error(w, http.StatusConflict, message)
 }
 
+func Forbidden(w http.ResponseWriter, message string) {
+	Error(w, http.StatusForbidden, message)
+}
+
 func InternalServerError(w http.ResponseWriter, message string) {
 	Error(w, http.StatusInternalServerError, message)
 }

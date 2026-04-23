@@ -1,6 +1,8 @@
 package app
 
 import (
+	"github.com/Basu008/GymBud/app/exercise"
+	"github.com/Basu008/GymBud/app/social"
 	"github.com/Basu008/GymBud/app/user"
 	"github.com/Basu008/GymBud/server/auth"
 	"github.com/Basu008/GymBud/server/config"
@@ -16,8 +18,10 @@ type App struct {
 	Redis    *redis.Client
 
 	//Services
-	UserService *user.Service
-	AuthService *auth.AuthService
+	ExerciseService *exercise.Service
+	UserService     *user.Service
+	SocialService   *social.Service
+	AuthService     *auth.AuthService
 }
 
 type Options struct {

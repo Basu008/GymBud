@@ -21,7 +21,6 @@ type JWTManager struct {
 	issuer string
 }
 
-var ErrAccessTokenExpired = errors.New("access token expired")
 var ErrInvalidAccessToken = errors.New("invalid access token")
 
 func NewJWTManager(secret, issuer string) *JWTManager {
@@ -31,7 +30,7 @@ func NewJWTManager(secret, issuer string) *JWTManager {
 	}
 }
 
-func (j *JWTManager) GenerateToken(userID, plan, sessionID, tokenType string, ttl time.Duration) (string, error) {
+func (j *JWTManager) GenerateToken(userID, plan, sessionID, tokenType string) (string, error) {
 	now := time.Now()
 
 	claims := UserClaims{
@@ -44,7 +43,6 @@ func (j *JWTManager) GenerateToken(userID, plan, sessionID, tokenType string, tt
 			Issuer:    j.issuer,
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
-			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
 		},
 	}
 
@@ -67,9 +65,6 @@ func (j *JWTManager) ParseToken(tokenStr string) (*UserClaims, error) {
 		return j.secret, nil
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 	if err != nil {
-		if errors.Is(err, jwt.ErrTokenExpired) {
-			return nil, ErrAccessTokenExpired
-		}
 		return nil, ErrInvalidAccessToken
 	}
 
