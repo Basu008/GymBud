@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Basu008/GymBud/app/exercise"
+	"github.com/Basu008/GymBud/app/routine"
 	"github.com/Basu008/GymBud/app/social"
 	"github.com/Basu008/GymBud/app/user"
 	"github.com/Basu008/GymBud/db/postgres"
@@ -16,6 +17,10 @@ func InitService(a *App) error {
 	if err != nil {
 		return fmt.Errorf("init exercise repository: %w", err)
 	}
+	routineRepo, err := postgres.NewRoutineRepo(postgresDB)
+	if err != nil {
+		return fmt.Errorf("init routine repository: %w", err)
+	}
 	userRepo, err := postgres.NewUserRepo(postgresDB)
 	if err != nil {
 		return fmt.Errorf("init user repository: %w", err)
@@ -27,6 +32,11 @@ func InitService(a *App) error {
 	a.ExerciseService = exercise.NewExerciseService(&exercise.Opts{
 		Repo:   exerciseRepo,
 		Logger: a.Logger,
+	})
+	a.RoutineService = routine.NewRoutineService(&routine.Opts{
+		Repo:       routineRepo,
+		SocialRepo: socialRepo,
+		Logger:     a.Logger,
 	})
 	a.UserService = user.NewUserService(&user.Opts{
 		Repo:        userRepo,

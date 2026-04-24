@@ -60,6 +60,22 @@ func (r *SocialRepo) GetFollowCounts(ctx context.Context, userID string) (*model
 	return &counts, nil
 }
 
+func (r *SocialRepo) IsFollowing(ctx context.Context, followerID, followeeID string) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(
+		ctx,
+		`SELECT EXISTS(SELECT 1 FROM follows WHERE follower_id = $1 AND followee_id = $2 AND status = $3)`,
+		followerID,
+		followeeID,
+		modelsocial.FollowStatusAccepted,
+	).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("check following status: %w", err)
+	}
+
+	return exists, nil
+}
+
 func (r *SocialRepo) Follow(ctx context.Context, followerID, followeeID string) (string, error) {
 	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {

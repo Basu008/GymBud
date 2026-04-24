@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/Basu008/GymBud/app/exercise"
+	"github.com/Basu008/GymBud/app/routine"
 	"github.com/Basu008/GymBud/app/social"
 	"github.com/Basu008/GymBud/app/user"
 	"github.com/Basu008/GymBud/server/auth"
@@ -19,6 +20,7 @@ type App struct {
 
 	//Services
 	ExerciseService *exercise.Service
+	RoutineService  *routine.Service
 	UserService     *user.Service
 	SocialService   *social.Service
 	AuthService     *auth.AuthService

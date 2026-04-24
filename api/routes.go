@@ -11,13 +11,15 @@ func (a *API) InitRoutes() {
 	//Users
 	a.Router.APIRoot.Handle("/users/me", a.requestAuthHandler(a.getCurrentUser)).Methods("GET")
 	a.Router.APIRoot.Handle("/users/{id}", a.requestAuthHandler(a.getUserByID)).Methods("GET")
-	a.Router.APIRoot.Handle("/users/{id}/follow", a.requestAuthHandler(a.followUser)).Methods("POST")
-	a.Router.APIRoot.Handle("/users/{id}/follow", a.requestAuthHandler(a.unfollowUser)).Methods("DELETE")
 	a.Router.APIRoot.Handle("/users/me", a.requestAuthHandler(a.updateUser)).Methods("PATCH")
 	a.Router.APIRoot.Handle("/users/me/privacy", a.requestAuthHandler(a.updatePrivacy)).Methods("PATCH")
 	a.Router.APIRoot.Handle("/users/me/active", a.requestAuthHandler(a.updateActive)).Methods("PATCH")
 	a.Router.APIRoot.Handle("/users/me/body-metrics", a.requestAuthHandler(a.createBodyMetrics)).Methods("POST")
 	a.Router.APIRoot.Handle("/users/me/body-metrics/{id}", a.requestAuthHandler(a.deleteBodyMetrics)).Methods("DELETE")
+
+	//Social
+	a.Router.APIRoot.Handle("/users/{id}/follow", a.requestAuthHandler(a.followUser)).Methods("POST")
+	a.Router.APIRoot.Handle("/users/{id}/follow", a.requestAuthHandler(a.unfollowUser)).Methods("DELETE")
 
 	//Exercises
 	a.Router.APIRoot.Handle("/exercises", a.requestAuthHandler(a.listExercises)).Methods("GET")
@@ -25,4 +27,12 @@ func (a *API) InitRoutes() {
 	a.Router.APIRoot.Handle("/exercises/{id}", a.requestAuthHandler(a.getExerciseByID)).Methods("GET")
 	a.Router.APIRoot.Handle("/exercises/{id}", a.requestAuthHandler(a.updateExercise)).Methods("PATCH")
 	a.Router.APIRoot.Handle("/exercises/{id}", a.requestAuthHandler(a.deleteExercise)).Methods("DELETE")
+
+	//Routines
+	a.Router.APIRoot.Handle("/routines", a.requestAuthHandler(a.listRoutines)).Methods("GET")
+	a.Router.APIRoot.Handle("/routines", a.requestAuthHandler(a.createRoutine)).Methods("POST")
+	a.Router.APIRoot.Handle("/routines/{id}/copy", a.requestAuthHandler(a.copyRoutine)).Methods("POST")
+	a.Router.APIRoot.Handle("/routines/{id}", a.requestAuthHandler(a.getRoutineByID)).Methods("GET")
+	a.Router.APIRoot.Handle("/routines/{id}", a.requestAuthHandler(a.updateRoutine)).Methods("PATCH")
+	a.Router.APIRoot.Handle("/routines/{id}", a.requestAuthHandler(a.deleteRoutine)).Methods("DELETE")
 }
