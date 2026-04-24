@@ -34,6 +34,10 @@ type ExerciseResponse struct {
 	Exercise *ExercisePayload `json:"exercise"`
 }
 
+type ExercisesResponse struct {
+	Exercises []*ExercisePayload `json:"exercises"`
+}
+
 type DeleteExerciseResponse struct {
 	DeletedID string `json:"deleted_id"`
 }

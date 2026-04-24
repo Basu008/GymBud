@@ -14,6 +14,38 @@ var ErrExerciseNotFound = errors.New("exercise not found")
 var ErrExerciseNameAlreadyExists = errors.New("exercise already exists for this equipment")
 var ErrExerciseManagedByAdmin = errors.New("admin-created exercises cannot be updated or deleted")
 
+func (s *Service) ListExercises(ctx context.Context, nameRegex, category *string) (*schema.ExercisesResponse, error) {
+	filter := &modelexercise.ListFilter{
+		NameRegex: normalizeOptionalString(nameRegex),
+		Category:  normalizeOptionalLowerString(category),
+	}
+
+	exercises, err := s.repo.List(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	payload := make([]*schema.ExercisePayload, 0, len(exercises))
+	for _, exercise := range exercises {
+		payload = append(payload, toExercisePayload(exercise))
+	}
+
+	return &schema.ExercisesResponse{Exercises: payload}, nil
+}
+
+func (s *Service) GetExerciseByID(ctx context.Context, exerciseID string) (*schema.ExerciseResponse, error) {
+	exerciseID = strings.TrimSpace(exerciseID)
+	exercise, err := s.repo.GetByID(ctx, exerciseID)
+	if err != nil {
+		if errors.Is(err, modelexercise.ErrExerciseNotFound) {
+			return nil, ErrExerciseNotFound
+		}
+		return nil, err
+	}
+
+	return &schema.ExerciseResponse{Exercise: toExercisePayload(exercise)}, nil
+}
+
 func (s *Service) CreateExercise(ctx context.Context, body *schema.CreateExerciseBody) (*schema.ExerciseResponse, error) {
 	isAdmin := false
 	if body.IsAdmin != nil {
@@ -142,6 +174,29 @@ func normalizeMovementMode(mode *string) *string {
 	}
 
 	return &value
+}
+
+func normalizeOptionalString(value *string) *string {
+	if value == nil {
+		return nil
+	}
+
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil
+	}
+
+	return &trimmed
+}
+
+func normalizeOptionalLowerString(value *string) *string {
+	normalized := normalizeOptionalString(value)
+	if normalized == nil {
+		return nil
+	}
+
+	lower := strings.ToLower(*normalized)
+	return &lower
 }
 
 func toExercisePayload(exercise *modelexercise.Exercise) *schema.ExercisePayload {

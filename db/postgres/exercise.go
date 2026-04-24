@@ -92,6 +92,76 @@ func (r *ExerciseRepo) Create(ctx context.Context, exercise *modelexercise.Exerc
 	return nil
 }
 
+func (r *ExerciseRepo) List(ctx context.Context, filter *modelexercise.ListFilter) ([]*modelexercise.Exercise, error) {
+	query := `
+		SELECT
+			id,
+			name,
+			category,
+			is_made_by_admin,
+			equipment,
+			movement_mode,
+			is_active,
+			created_at,
+			updated_at
+		FROM exercises
+	`
+
+	whereClauses := make([]string, 0, 2)
+	args := make([]any, 0, 2)
+	argIndex := 1
+
+	if filter != nil {
+		if filter.NameRegex != nil {
+			whereClauses = append(whereClauses, "name ~* $"+strconv.Itoa(argIndex))
+			args = append(args, *filter.NameRegex)
+			argIndex++
+		}
+		if filter.Category != nil {
+			whereClauses = append(whereClauses, "LOWER(category) = $"+strconv.Itoa(argIndex))
+			args = append(args, *filter.Category)
+			argIndex++
+		}
+	}
+
+	if len(whereClauses) > 0 {
+		query += "\nWHERE " + strings.Join(whereClauses, " AND ")
+	}
+
+	query += "\nORDER BY name ASC, created_at ASC"
+
+	rows, err := r.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list exercises: %w", err)
+	}
+	defer rows.Close()
+
+	exercises := make([]*modelexercise.Exercise, 0)
+	for rows.Next() {
+		var exercise modelexercise.Exercise
+		if err := rows.Scan(
+			&exercise.ID,
+			&exercise.Name,
+			&exercise.Category,
+			&exercise.IsMadeByAdmin,
+			&exercise.Equipment,
+			&exercise.MovementMode,
+			&exercise.IsActive,
+			&exercise.CreatedAt,
+			&exercise.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan exercise: %w", err)
+		}
+		exercises = append(exercises, &exercise)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate exercises: %w", err)
+	}
+
+	return exercises, nil
+}
+
 func (r *ExerciseRepo) GetByID(ctx context.Context, exerciseID string) (*modelexercise.Exercise, error) {
 	const query = `
 		SELECT

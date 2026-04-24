@@ -20,7 +20,9 @@ func (a *API) InitRoutes() {
 	a.Router.APIRoot.Handle("/users/me/body-metrics/{id}", a.requestAuthHandler(a.deleteBodyMetrics)).Methods("DELETE")
 
 	//Exercises
+	a.Router.APIRoot.Handle("/exercises", a.requestAuthHandler(a.listExercises)).Methods("GET")
 	a.Router.APIRoot.Handle("/exercises", a.requestAuthHandler(a.createExercise)).Methods("POST")
+	a.Router.APIRoot.Handle("/exercises/{id}", a.requestAuthHandler(a.getExerciseByID)).Methods("GET")
 	a.Router.APIRoot.Handle("/exercises/{id}", a.requestAuthHandler(a.updateExercise)).Methods("PATCH")
 	a.Router.APIRoot.Handle("/exercises/{id}", a.requestAuthHandler(a.deleteExercise)).Methods("DELETE")
 }

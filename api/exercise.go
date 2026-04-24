@@ -11,6 +11,42 @@ import (
 	"github.com/gorilla/mux"
 )
 
+func (a *API) listExercises(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
+	name := r.URL.Query().Get("name")
+	category := r.URL.Query().Get("category")
+
+	if strings.TrimSpace(category) != "" {
+		if err := validateCategoryValue(category); err != nil {
+			handler.BadRequest(w, err.Error())
+			return
+		}
+	}
+
+	response, err := a.App.ExerciseService.ListExercises(r.Context(), &name, &category)
+	if err != nil {
+		handler.BadRequest(w, err.Error())
+		return
+	}
+
+	handler.OK(w, response)
+}
+
+func (a *API) getExerciseByID(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
+	exerciseID := mux.Vars(r)["id"]
+	response, err := a.App.ExerciseService.GetExerciseByID(r.Context(), exerciseID)
+	if err != nil {
+		switch {
+		case errors.Is(err, appexercise.ErrExerciseNotFound):
+			handler.NotFound(w, err.Error())
+		default:
+			handler.BadRequest(w, err.Error())
+		}
+		return
+	}
+
+	handler.OK(w, response)
+}
+
 func (a *API) createExercise(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
 	var body schema.CreateExerciseBody
 	if err := handler.BindJSON(r, &body); err != nil {
@@ -168,18 +204,18 @@ func validatePartialExerciseInput(category, equipment, movementMode *string) err
 
 func validateCategoryValue(value string) error {
 	valid := map[string]struct{}{
-		"chest":    {},
-		"back":     {},
-		"triceps":  {},
-		"biceps":   {},
-		"shoulder": {},
-		"legs":     {},
-		"abs":      {},
-		"forearms": {},
+		"chest":     {},
+		"back":      {},
+		"triceps":   {},
+		"biceps":    {},
+		"shoulders": {},
+		"legs":      {},
+		"abs":       {},
+		"forearms":  {},
 	}
 
 	if _, ok := valid[strings.TrimSpace(strings.ToLower(value))]; !ok {
-		return errors.New("category must be one of: Chest, Back, Triceps, Biceps, Shoulder, Legs, Abs, Forearms")
+		return errors.New("category must be one of: Chest, Back, Triceps, Biceps, Shoulders, Legs, Abs, Forearms")
 	}
 
 	return nil
