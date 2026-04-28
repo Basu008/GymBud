@@ -35,4 +35,7 @@ func (a *API) InitRoutes() {
 	a.Router.APIRoot.Handle("/routines/{id}", a.requestAuthHandler(a.getRoutineByID)).Methods("GET")
 	a.Router.APIRoot.Handle("/routines/{id}", a.requestAuthHandler(a.updateRoutine)).Methods("PATCH")
 	a.Router.APIRoot.Handle("/routines/{id}", a.requestAuthHandler(a.deleteRoutine)).Methods("DELETE")
+
+	//Workouts
+	a.Router.APIRoot.Handle("/workouts", a.requestAuthHandler(a.createWorkout)).Methods("POST")
 }

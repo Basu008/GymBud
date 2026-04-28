@@ -5,6 +5,7 @@ import (
 	"github.com/Basu008/GymBud/app/routine"
 	"github.com/Basu008/GymBud/app/social"
 	"github.com/Basu008/GymBud/app/user"
+	"github.com/Basu008/GymBud/app/workout"
 	"github.com/Basu008/GymBud/server/auth"
 	"github.com/Basu008/GymBud/server/config"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -25,6 +26,7 @@ type App struct {
 	RoutineService  *routine.Service
 	UserService     *user.Service
 	SocialService   *social.Service
+	WorkoutService  *workout.Service
 	AuthService     *auth.AuthService
 }
 
