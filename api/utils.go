@@ -5,10 +5,15 @@ import (
 	"unicode"
 
 	"github.com/Basu008/GymBud/server/handler"
+	"github.com/gorilla/mux"
 )
 
 func (a *API) healthCheck(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
 	handler.OK(w, true)
+}
+
+func pathID(r *http.Request) string {
+	return mux.Vars(r)["id"]
 }
 
 func isStrongPassword(password string) bool {

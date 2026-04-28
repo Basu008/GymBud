@@ -7,7 +7,6 @@ import (
 	approutine "github.com/Basu008/GymBud/app/routine"
 	"github.com/Basu008/GymBud/schema"
 	"github.com/Basu008/GymBud/server/handler"
-	"github.com/gorilla/mux"
 )
 
 func (a *API) listRoutines(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
@@ -21,7 +20,7 @@ func (a *API) listRoutines(ctx *handler.RequestCtx, w http.ResponseWriter, r *ht
 }
 
 func (a *API) getRoutineByID(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
-	routineID := mux.Vars(r)["id"]
+	routineID := pathID(r)
 	response, err := a.App.RoutineService.GetRoutineByID(r.Context(), ctx.UserClaim.UserID, routineID)
 	if err != nil {
 		if errors.Is(err, approutine.ErrRoutineNotFound) {
@@ -62,7 +61,7 @@ func (a *API) createRoutine(ctx *handler.RequestCtx, w http.ResponseWriter, r *h
 }
 
 func (a *API) copyRoutine(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
-	routineID := mux.Vars(r)["id"]
+	routineID := pathID(r)
 	response, err := a.App.RoutineService.CopyRoutine(r.Context(), ctx.UserClaim.UserID, routineID)
 	if err != nil {
 		switch {
@@ -90,7 +89,7 @@ func (a *API) updateRoutine(ctx *handler.RequestCtx, w http.ResponseWriter, r *h
 		return
 	}
 
-	routineID := mux.Vars(r)["id"]
+	routineID := pathID(r)
 	response, err := a.App.RoutineService.UpdateRoutine(r.Context(), ctx.UserClaim.UserID, routineID, &body)
 	if err != nil {
 		switch {
@@ -108,7 +107,7 @@ func (a *API) updateRoutine(ctx *handler.RequestCtx, w http.ResponseWriter, r *h
 }
 
 func (a *API) deleteRoutine(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
-	routineID := mux.Vars(r)["id"]
+	routineID := pathID(r)
 	response, err := a.App.RoutineService.DeleteRoutine(r.Context(), ctx.UserClaim.UserID, routineID)
 	if err != nil {
 		if errors.Is(err, approutine.ErrRoutineNotFound) {

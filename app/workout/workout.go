@@ -15,6 +15,7 @@ import (
 
 var ErrRoutineNotFound = errors.New("routine not found")
 var ErrRoutineExerciseNotFound = errors.New("one or more exercises do not exist in the routine")
+var ErrWorkoutNotFound = errors.New("workout not found")
 
 func (s *Service) CreateWorkout(ctx context.Context, userID string, body *schema.CreateWorkoutBody) (*schema.WorkoutResponse, error) {
 	userID = strings.TrimSpace(userID)
@@ -86,7 +87,51 @@ func (s *Service) CreateWorkout(ctx context.Context, userID string, body *schema
 		}
 	}
 
-	return &schema.WorkoutResponse{Workout: toWorkoutPayload(workout)}, nil
+	return &schema.WorkoutResponse{Workout: toWorkoutPayload(workout, userID)}, nil
+}
+
+func (s *Service) LikeWorkout(ctx context.Context, userID, workoutID string) (*schema.WorkoutResponse, error) {
+	userID = strings.TrimSpace(userID)
+	workoutID = strings.TrimSpace(workoutID)
+
+	if _, err := uuid.Parse(userID); err != nil {
+		return nil, err
+	}
+	if workoutID == "" {
+		return nil, errors.New("workout id is required")
+	}
+
+	workout, err := s.repo.LikeWorkout(ctx, workoutID, userID)
+	if err != nil {
+		if errors.Is(err, modelworkout.ErrWorkoutNotFound) {
+			return nil, ErrWorkoutNotFound
+		}
+		return nil, err
+	}
+
+	return &schema.WorkoutResponse{Workout: toWorkoutPayload(workout, userID)}, nil
+}
+
+func (s *Service) UnlikeWorkout(ctx context.Context, userID, workoutID string) (*schema.WorkoutResponse, error) {
+	userID = strings.TrimSpace(userID)
+	workoutID = strings.TrimSpace(workoutID)
+
+	if _, err := uuid.Parse(userID); err != nil {
+		return nil, err
+	}
+	if workoutID == "" {
+		return nil, errors.New("workout id is required")
+	}
+
+	workout, err := s.repo.UnlikeWorkout(ctx, workoutID, userID)
+	if err != nil {
+		if errors.Is(err, modelworkout.ErrWorkoutNotFound) {
+			return nil, ErrWorkoutNotFound
+		}
+		return nil, err
+	}
+
+	return &schema.WorkoutResponse{Workout: toWorkoutPayload(workout, userID)}, nil
 }
 
 func (s *Service) buildWorkoutExercises(ctx context.Context, workout *modelworkout.Workout, inputs []schema.CreateWorkoutExerciseInput, routineExercises []*modelroutine.RoutineExercise, now time.Time) ([]*modelworkout.WorkoutExercise, modelworkout.WorkoutStats, []*modelworkout.PersonalRecord, error) {
@@ -278,7 +323,7 @@ func evaluatePR(workout *modelworkout.Workout, routineExercise *modelroutine.Rou
 	return flags, current, nil
 }
 
-func toWorkoutPayload(workout *modelworkout.Workout) *schema.WorkoutPayload {
+func toWorkoutPayload(workout *modelworkout.Workout, viewerUserID string) *schema.WorkoutPayload {
 	exercises := make([]*schema.WorkoutExercisePayload, 0, len(workout.Exercises))
 	for _, exercise := range workout.Exercises {
 		sets := make([]*schema.WorkoutSetPayload, 0, len(exercise.Sets))
@@ -306,6 +351,14 @@ func toWorkoutPayload(workout *modelworkout.Workout) *schema.WorkoutPayload {
 		})
 	}
 
+	likedByMe := false
+	for _, likedUserID := range workout.LikedBy {
+		if likedUserID == viewerUserID {
+			likedByMe = true
+			break
+		}
+	}
+
 	return &schema.WorkoutPayload{
 		ID:          workout.ID,
 		UserID:      workout.UserID,
@@ -316,6 +369,8 @@ func toWorkoutPayload(workout *modelworkout.Workout) *schema.WorkoutPayload {
 		DurationSec: workout.DurationSec,
 		Visibility:  workout.Visibility,
 		Notes:       workout.Notes,
+		LikesCount:  len(workout.LikedBy),
+		LikedByMe:   likedByMe,
 		Exercises:   exercises,
 		Stats: schema.WorkoutStatsPayload{
 			TotalSets:   workout.Stats.TotalSets,

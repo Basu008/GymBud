@@ -34,3 +34,33 @@ func (a *API) createWorkout(ctx *handler.RequestCtx, w http.ResponseWriter, r *h
 
 	handler.Created(w, response)
 }
+
+func (a *API) likeWorkout(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
+	workoutID := pathID(r)
+	response, err := a.App.WorkoutService.LikeWorkout(r.Context(), ctx.UserClaim.UserID, workoutID)
+	if err != nil {
+		if errors.Is(err, appworkout.ErrWorkoutNotFound) {
+			handler.NotFound(w, err.Error())
+			return
+		}
+		handler.BadRequest(w, err.Error())
+		return
+	}
+
+	handler.OK(w, response)
+}
+
+func (a *API) unlikeWorkout(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
+	workoutID := pathID(r)
+	response, err := a.App.WorkoutService.UnlikeWorkout(r.Context(), ctx.UserClaim.UserID, workoutID)
+	if err != nil {
+		if errors.Is(err, appworkout.ErrWorkoutNotFound) {
+			handler.NotFound(w, err.Error())
+			return
+		}
+		handler.BadRequest(w, err.Error())
+		return
+	}
+
+	handler.OK(w, response)
+}

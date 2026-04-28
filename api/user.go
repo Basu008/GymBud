@@ -8,7 +8,6 @@ import (
 	appuser "github.com/Basu008/GymBud/app/user"
 	"github.com/Basu008/GymBud/schema"
 	"github.com/Basu008/GymBud/server/handler"
-	"github.com/gorilla/mux"
 )
 
 func (a *API) signUp(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
@@ -92,7 +91,7 @@ func (a *API) updatePrivacy(ctx *handler.RequestCtx, w http.ResponseWriter, r *h
 }
 
 func (a *API) followUser(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
-	userID := mux.Vars(r)["id"]
+	userID := pathID(r)
 	response, err := a.App.SocialService.FollowUser(r.Context(), ctx.UserClaim.UserID, userID)
 	if err != nil {
 		if errors.Is(err, appsocial.ErrUserNotFound) {
@@ -107,7 +106,7 @@ func (a *API) followUser(ctx *handler.RequestCtx, w http.ResponseWriter, r *http
 }
 
 func (a *API) unfollowUser(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
-	userID := mux.Vars(r)["id"]
+	userID := pathID(r)
 	response, err := a.App.SocialService.UnfollowUser(r.Context(), ctx.UserClaim.UserID, userID)
 	if err != nil {
 		if errors.Is(err, appsocial.ErrUserNotFound) {
@@ -115,6 +114,38 @@ func (a *API) unfollowUser(ctx *handler.RequestCtx, w http.ResponseWriter, r *ht
 			return
 		}
 		handler.BadRequest(w, err.Error())
+		return
+	}
+
+	handler.OK(w, response)
+}
+
+func (a *API) acceptFollowRequest(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
+	userID := pathID(r)
+	response, err := a.App.SocialService.AcceptFollowRequest(r.Context(), ctx.UserClaim.UserID, userID)
+	if err != nil {
+		switch {
+		case errors.Is(err, appsocial.ErrUserNotFound), errors.Is(err, appsocial.ErrFollowRequestNotFound):
+			handler.NotFound(w, err.Error())
+		default:
+			handler.BadRequest(w, err.Error())
+		}
+		return
+	}
+
+	handler.OK(w, response)
+}
+
+func (a *API) rejectFollowRequest(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
+	userID := pathID(r)
+	response, err := a.App.SocialService.RejectFollowRequest(r.Context(), ctx.UserClaim.UserID, userID)
+	if err != nil {
+		switch {
+		case errors.Is(err, appsocial.ErrUserNotFound), errors.Is(err, appsocial.ErrFollowRequestNotFound):
+			handler.NotFound(w, err.Error())
+		default:
+			handler.BadRequest(w, err.Error())
+		}
 		return
 	}
 
@@ -163,7 +194,7 @@ func (a *API) getCurrentUser(ctx *handler.RequestCtx, w http.ResponseWriter, r *
 }
 
 func (a *API) getUserByID(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
-	userID := mux.Vars(r)["id"]
+	userID := pathID(r)
 	response, err := a.App.UserService.GetUserByID(r.Context(), userID)
 	if err != nil {
 		if errors.Is(err, appuser.ErrUserNotFound) {
@@ -217,7 +248,7 @@ func (a *API) createBodyMetrics(ctx *handler.RequestCtx, w http.ResponseWriter, 
 }
 
 func (a *API) deleteBodyMetrics(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
-	metricsID := mux.Vars(r)["id"]
+	metricsID := pathID(r)
 	response, err := a.App.UserService.DeleteBodyMetrics(r.Context(), ctx.UserClaim.UserID, metricsID)
 	if err != nil {
 		if errors.Is(err, appuser.ErrBodyMetricsNotFound) {

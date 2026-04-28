@@ -1,6 +1,11 @@
 package workout
 
-import "time"
+import (
+	"errors"
+	"time"
+)
+
+var ErrWorkoutNotFound = errors.New("workout not found")
 
 type Workout struct {
 	ID          string             `bson:"_id" json:"id"`
@@ -12,6 +17,7 @@ type Workout struct {
 	DurationSec int                `bson:"duration_sec" json:"duration_sec"`
 	Visibility  string             `bson:"visibility" json:"visibility"`
 	Notes       *string            `bson:"notes,omitempty" json:"notes,omitempty"`
+	LikedBy     []string           `bson:"liked_by,omitempty" json:"-"`
 	Exercises   []*WorkoutExercise `bson:"exercises" json:"exercises"`
 	Stats       WorkoutStats       `bson:"stats" json:"stats"`
 	CreatedAt   time.Time          `bson:"created_at" json:"created_at"`

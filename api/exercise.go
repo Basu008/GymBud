@@ -8,7 +8,6 @@ import (
 	appexercise "github.com/Basu008/GymBud/app/exercise"
 	"github.com/Basu008/GymBud/schema"
 	"github.com/Basu008/GymBud/server/handler"
-	"github.com/gorilla/mux"
 )
 
 func (a *API) listExercises(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
@@ -32,7 +31,7 @@ func (a *API) listExercises(ctx *handler.RequestCtx, w http.ResponseWriter, r *h
 }
 
 func (a *API) getExerciseByID(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
-	exerciseID := mux.Vars(r)["id"]
+	exerciseID := pathID(r)
 	response, err := a.App.ExerciseService.GetExerciseByID(r.Context(), exerciseID)
 	if err != nil {
 		switch {
@@ -88,7 +87,7 @@ func (a *API) updateExercise(ctx *handler.RequestCtx, w http.ResponseWriter, r *
 		return
 	}
 
-	exerciseID := mux.Vars(r)["id"]
+	exerciseID := pathID(r)
 	response, err := a.App.ExerciseService.UpdateExercise(r.Context(), exerciseID, &body)
 	if err != nil {
 		switch {
@@ -108,7 +107,7 @@ func (a *API) updateExercise(ctx *handler.RequestCtx, w http.ResponseWriter, r *
 }
 
 func (a *API) deleteExercise(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
-	exerciseID := mux.Vars(r)["id"]
+	exerciseID := pathID(r)
 	response, err := a.App.ExerciseService.DeleteExercise(r.Context(), exerciseID)
 	if err != nil {
 		switch {

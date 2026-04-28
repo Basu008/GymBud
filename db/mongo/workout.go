@@ -35,6 +35,54 @@ func (r *WorkoutRepo) Create(ctx context.Context, workout *modelworkout.Workout)
 	return nil
 }
 
+func (r *WorkoutRepo) GetByID(ctx context.Context, workoutID string) (*modelworkout.Workout, error) {
+	var workout modelworkout.Workout
+	if err := r.collection.FindOne(ctx, bson.M{"_id": workoutID}).Decode(&workout); err != nil {
+		if errors.Is(err, mongodriver.ErrNoDocuments) {
+			return nil, modelworkout.ErrWorkoutNotFound
+		}
+		return nil, fmt.Errorf("find workout: %w", err)
+	}
+
+	return &workout, nil
+}
+
+func (r *WorkoutRepo) LikeWorkout(ctx context.Context, workoutID, userID string) (*modelworkout.Workout, error) {
+	var workout modelworkout.Workout
+	err := r.collection.FindOneAndUpdate(
+		ctx,
+		bson.M{"_id": workoutID},
+		bson.M{"$addToSet": bson.M{"liked_by": userID}},
+		options.FindOneAndUpdate().SetReturnDocument(options.After),
+	).Decode(&workout)
+	if err != nil {
+		if errors.Is(err, mongodriver.ErrNoDocuments) {
+			return nil, modelworkout.ErrWorkoutNotFound
+		}
+		return nil, fmt.Errorf("like workout: %w", err)
+	}
+
+	return &workout, nil
+}
+
+func (r *WorkoutRepo) UnlikeWorkout(ctx context.Context, workoutID, userID string) (*modelworkout.Workout, error) {
+	var workout modelworkout.Workout
+	err := r.collection.FindOneAndUpdate(
+		ctx,
+		bson.M{"_id": workoutID},
+		bson.M{"$pull": bson.M{"liked_by": userID}},
+		options.FindOneAndUpdate().SetReturnDocument(options.After),
+	).Decode(&workout)
+	if err != nil {
+		if errors.Is(err, mongodriver.ErrNoDocuments) {
+			return nil, modelworkout.ErrWorkoutNotFound
+		}
+		return nil, fmt.Errorf("unlike workout: %w", err)
+	}
+
+	return &workout, nil
+}
+
 func (r *WorkoutRepo) GetLatestPersonalRecord(ctx context.Context, userID, exerciseID string) (*modelworkout.PersonalRecord, error) {
 	var record modelworkout.PersonalRecord
 	err := r.personalRecordCollection.FindOne(

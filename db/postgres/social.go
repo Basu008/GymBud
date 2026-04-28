@@ -132,3 +132,42 @@ func (r *SocialRepo) Unfollow(ctx context.Context, followerID, followeeID string
 
 	return nil
 }
+
+func (r *SocialRepo) AcceptFollowRequest(ctx context.Context, followerID, followeeID string) error {
+	result, err := r.db.Exec(
+		ctx,
+		`UPDATE follows SET status = $3 WHERE follower_id = $1 AND followee_id = $2 AND status = $4`,
+		followerID,
+		followeeID,
+		modelsocial.FollowStatusAccepted,
+		modelsocial.FollowStatusPending,
+	)
+	if err != nil {
+		return fmt.Errorf("accept follow request: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return modelsocial.ErrFollowRequestNotFound
+	}
+
+	return nil
+}
+
+func (r *SocialRepo) RejectFollowRequest(ctx context.Context, followerID, followeeID string) error {
+	result, err := r.db.Exec(
+		ctx,
+		`DELETE FROM follows WHERE follower_id = $1 AND followee_id = $2 AND status = $3`,
+		followerID,
+		followeeID,
+		modelsocial.FollowStatusPending,
+	)
+	if err != nil {
+		return fmt.Errorf("reject follow request: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return modelsocial.ErrFollowRequestNotFound
+	}
+
+	return nil
+}

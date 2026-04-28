@@ -62,6 +62,8 @@ type WorkoutPayload struct {
 	DurationSec int                       `json:"duration_sec"`
 	Visibility  string                    `json:"visibility"`
 	Notes       *string                   `json:"notes,omitempty"`
+	LikesCount  int                       `json:"likes_count"`
+	LikedByMe   bool                      `json:"liked_by_me"`
 	Exercises   []*WorkoutExercisePayload `json:"exercises"`
 	Stats       WorkoutStatsPayload       `json:"stats"`
 	CreatedAt   time.Time                 `json:"created_at"`

@@ -20,6 +20,8 @@ func (a *API) InitRoutes() {
 	//Social
 	a.Router.APIRoot.Handle("/users/{id}/follow", a.requestAuthHandler(a.followUser)).Methods("POST")
 	a.Router.APIRoot.Handle("/users/{id}/follow", a.requestAuthHandler(a.unfollowUser)).Methods("DELETE")
+	a.Router.APIRoot.Handle("/users/{id}/follow/accept", a.requestAuthHandler(a.acceptFollowRequest)).Methods("POST")
+	a.Router.APIRoot.Handle("/users/{id}/follow/reject", a.requestAuthHandler(a.rejectFollowRequest)).Methods("DELETE")
 
 	//Exercises
 	a.Router.APIRoot.Handle("/exercises", a.requestAuthHandler(a.listExercises)).Methods("GET")
@@ -38,4 +40,6 @@ func (a *API) InitRoutes() {
 
 	//Workouts
 	a.Router.APIRoot.Handle("/workouts", a.requestAuthHandler(a.createWorkout)).Methods("POST")
+	a.Router.APIRoot.Handle("/workouts/{id}/like", a.requestAuthHandler(a.likeWorkout)).Methods("POST")
+	a.Router.APIRoot.Handle("/workouts/{id}/like", a.requestAuthHandler(a.unlikeWorkout)).Methods("DELETE")
 }
