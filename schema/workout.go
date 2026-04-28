@@ -62,6 +62,7 @@ type WorkoutPayload struct {
 	DurationSec int                       `json:"duration_sec"`
 	Visibility  string                    `json:"visibility"`
 	Notes       *string                   `json:"notes,omitempty"`
+	HasPR       bool                      `json:"has_pr"`
 	LikesCount  int                       `json:"likes_count"`
 	LikedByMe   bool                      `json:"liked_by_me"`
 	Exercises   []*WorkoutExercisePayload `json:"exercises"`
@@ -72,4 +73,20 @@ type WorkoutPayload struct {
 
 type WorkoutResponse struct {
 	Workout *WorkoutPayload `json:"workout"`
+}
+
+type DeleteWorkoutResponse struct {
+	DeletedID string `json:"deleted_id"`
+}
+
+type PaginationPayload struct {
+	Page       int   `json:"page"`
+	Limit      int   `json:"limit"`
+	Total      int64 `json:"total"`
+	TotalPages int   `json:"total_pages"`
+}
+
+type WorkoutsResponse struct {
+	Workouts   []*WorkoutPayload   `json:"workouts"`
+	Pagination PaginationPayload `json:"pagination"`
 }

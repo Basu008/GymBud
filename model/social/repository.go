@@ -9,4 +9,8 @@ type Repository interface {
 	AcceptFollowRequest(ctx context.Context, followerID, followeeID string) error
 	RejectFollowRequest(ctx context.Context, followerID, followeeID string) error
 	Unfollow(ctx context.Context, followerID, followeeID string) error
+	LikeWorkout(ctx context.Context, workoutID, userID string) error
+	UnlikeWorkout(ctx context.Context, workoutID, userID string) error
+	DeleteWorkoutLikes(ctx context.Context, workoutID string) error
+	GetWorkoutLikeSummaries(ctx context.Context, viewerUserID string, workoutIDs []string) (map[string]*WorkoutLikeSummary, error)
 }

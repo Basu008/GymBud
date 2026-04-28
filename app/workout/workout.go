@@ -8,6 +8,8 @@ import (
 	"time"
 
 	modelroutine "github.com/Basu008/GymBud/model/routine"
+	modelsocial "github.com/Basu008/GymBud/model/social"
+	modeluser "github.com/Basu008/GymBud/model/user"
 	modelworkout "github.com/Basu008/GymBud/model/workout"
 	"github.com/Basu008/GymBud/schema"
 	"github.com/google/uuid"
@@ -16,6 +18,9 @@ import (
 var ErrRoutineNotFound = errors.New("routine not found")
 var ErrRoutineExerciseNotFound = errors.New("one or more exercises do not exist in the routine")
 var ErrWorkoutNotFound = errors.New("workout not found")
+var ErrUserNotFound = errors.New("user not found")
+var ErrWorkoutAccessDenied = errors.New("you are not allowed to view this user's workouts")
+var ErrWorkoutDeleteNotAllowed = errors.New("you are not allowed to delete this workout")
 
 func (s *Service) CreateWorkout(ctx context.Context, userID string, body *schema.CreateWorkoutBody) (*schema.WorkoutResponse, error) {
 	userID = strings.TrimSpace(userID)
@@ -82,12 +87,231 @@ func (s *Service) CreateWorkout(ctx context.Context, userID string, body *schema
 		return nil, err
 	}
 	for _, record := range personalRecords {
+		record.WorkoutID = workout.ID
 		if err := s.repo.CreatePersonalRecord(ctx, record); err != nil {
 			return nil, err
 		}
 	}
 
-	return &schema.WorkoutResponse{Workout: toWorkoutPayload(workout, userID)}, nil
+	return &schema.WorkoutResponse{Workout: toWorkoutPayload(workout, workout.Stats.PRCount > 0, nil)}, nil
+}
+
+func (s *Service) ListUserWorkouts(ctx context.Context, viewerUserID, targetUserID string, page, limit int) (*schema.WorkoutsResponse, error) {
+	viewerUserID = strings.TrimSpace(viewerUserID)
+	targetUserID = strings.TrimSpace(targetUserID)
+
+	if _, err := uuid.Parse(viewerUserID); err != nil {
+		return nil, err
+	}
+	if _, err := uuid.Parse(targetUserID); err != nil {
+		return nil, err
+	}
+
+	targetUser, err := s.userRepo.GetByID(ctx, targetUserID)
+	if err != nil {
+		if errors.Is(err, modeluser.ErrUserNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, err
+	}
+
+	visibility := (*string)(nil)
+	if viewerUserID != targetUserID {
+		publicVisibility := "all"
+		visibility = &publicVisibility
+
+		if targetUser.IsPrivate {
+			isFollowing, err := s.socialRepo.IsFollowing(ctx, viewerUserID, targetUserID)
+			if err != nil {
+				return nil, err
+			}
+			if !isFollowing {
+				return nil, ErrWorkoutAccessDenied
+			}
+		}
+	}
+
+	offset := int64((page - 1) * limit)
+	workouts, total, err := s.repo.ListByUserID(ctx, &modelworkout.ListFilter{
+		UserID:     targetUserID,
+		Visibility: visibility,
+		Offset:     offset,
+		Limit:      int64(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	currentPRWorkoutIDs := map[string]bool{}
+	likeSummaries := map[string]*modelsocial.WorkoutLikeSummary{}
+	if len(workouts) > 0 {
+		workoutIDs := make([]string, 0, len(workouts))
+		for _, workout := range workouts {
+			workoutIDs = append(workoutIDs, workout.ID)
+		}
+
+		currentPRWorkoutIDs, err = s.repo.GetCurrentPRWorkoutIDs(ctx, targetUserID, workoutIDs)
+		if err != nil {
+			return nil, err
+		}
+		likeSummaries, err = s.socialRepo.GetWorkoutLikeSummaries(ctx, viewerUserID, workoutIDs)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	payloads := make([]*schema.WorkoutPayload, 0, len(workouts))
+	for _, workout := range workouts {
+		payloads = append(payloads, toWorkoutPayload(workout, currentPRWorkoutIDs[workout.ID], likeSummaries[workout.ID]))
+	}
+
+	totalPages := 0
+	if total > 0 {
+		totalPages = int((total + int64(limit) - 1) / int64(limit))
+	}
+
+	return &schema.WorkoutsResponse{
+		Workouts: payloads,
+		Pagination: schema.PaginationPayload{
+			Page:       page,
+			Limit:      limit,
+			Total:      total,
+			TotalPages: totalPages,
+		},
+	}, nil
+}
+
+func (s *Service) GetWorkoutByID(ctx context.Context, viewerUserID, workoutID string) (*schema.WorkoutResponse, error) {
+	viewerUserID = strings.TrimSpace(viewerUserID)
+	workoutID = strings.TrimSpace(workoutID)
+
+	if _, err := uuid.Parse(viewerUserID); err != nil {
+		return nil, err
+	}
+	if workoutID == "" {
+		return nil, errors.New("workout id is required")
+	}
+
+	workout, err := s.repo.GetByID(ctx, workoutID)
+	if err != nil {
+		if errors.Is(err, modelworkout.ErrWorkoutNotFound) {
+			return nil, ErrWorkoutNotFound
+		}
+		return nil, err
+	}
+
+	if viewerUserID != workout.UserID {
+		owner, err := s.userRepo.GetByID(ctx, workout.UserID)
+		if err != nil {
+			if errors.Is(err, modeluser.ErrUserNotFound) {
+				return nil, ErrUserNotFound
+			}
+			return nil, err
+		}
+
+		if owner.IsPrivate {
+			isFollowing, err := s.socialRepo.IsFollowing(ctx, viewerUserID, workout.UserID)
+			if err != nil {
+				return nil, err
+			}
+			if !isFollowing {
+				return nil, ErrWorkoutAccessDenied
+			}
+		}
+
+		if workout.Visibility != "all" {
+			return nil, ErrWorkoutAccessDenied
+		}
+	}
+
+	containsPR, err := s.repo.GetCurrentPRWorkoutIDs(ctx, workout.UserID, []string{workout.ID})
+	if err != nil {
+		return nil, err
+	}
+	likeSummaries, err := s.socialRepo.GetWorkoutLikeSummaries(ctx, viewerUserID, []string{workout.ID})
+	if err != nil {
+		return nil, err
+	}
+
+	return &schema.WorkoutResponse{
+		Workout: toWorkoutPayload(workout, containsPR[workout.ID], likeSummaries[workout.ID]),
+	}, nil
+}
+
+func (s *Service) GetLatestWorkoutByRoutineID(ctx context.Context, userID, routineID string) (*schema.WorkoutResponse, error) {
+	userID = strings.TrimSpace(userID)
+	routineID = strings.TrimSpace(routineID)
+
+	if _, err := uuid.Parse(userID); err != nil {
+		return nil, err
+	}
+	if _, err := uuid.Parse(routineID); err != nil {
+		return nil, err
+	}
+
+	if _, err := s.routineRepo.GetByID(ctx, userID, routineID); err != nil {
+		if errors.Is(err, modelroutine.ErrRoutineNotFound) {
+			return nil, ErrRoutineNotFound
+		}
+		return nil, err
+	}
+
+	workout, err := s.repo.GetLatestByRoutineID(ctx, userID, routineID)
+	if err != nil {
+		if errors.Is(err, modelworkout.ErrWorkoutNotFound) {
+			return nil, ErrWorkoutNotFound
+		}
+		return nil, err
+	}
+
+	containsPR, err := s.repo.GetCurrentPRWorkoutIDs(ctx, userID, []string{workout.ID})
+	if err != nil {
+		return nil, err
+	}
+	likeSummaries, err := s.socialRepo.GetWorkoutLikeSummaries(ctx, userID, []string{workout.ID})
+	if err != nil {
+		return nil, err
+	}
+
+	return &schema.WorkoutResponse{
+		Workout: toWorkoutPayload(workout, containsPR[workout.ID], likeSummaries[workout.ID]),
+	}, nil
+}
+
+func (s *Service) DeleteWorkout(ctx context.Context, userID, workoutID string) (*schema.DeleteWorkoutResponse, error) {
+	userID = strings.TrimSpace(userID)
+	workoutID = strings.TrimSpace(workoutID)
+
+	if _, err := uuid.Parse(userID); err != nil {
+		return nil, err
+	}
+	if workoutID == "" {
+		return nil, errors.New("workout id is required")
+	}
+
+	workout, err := s.repo.GetByID(ctx, workoutID)
+	if err != nil {
+		if errors.Is(err, modelworkout.ErrWorkoutNotFound) {
+			return nil, ErrWorkoutNotFound
+		}
+		return nil, err
+	}
+
+	if workout.UserID != userID {
+		return nil, ErrWorkoutDeleteNotAllowed
+	}
+
+	if err := s.repo.Delete(ctx, workoutID); err != nil {
+		if errors.Is(err, modelworkout.ErrWorkoutNotFound) {
+			return nil, ErrWorkoutNotFound
+		}
+		return nil, err
+	}
+	if err := s.socialRepo.DeleteWorkoutLikes(ctx, workoutID); err != nil {
+		return nil, err
+	}
+
+	return &schema.DeleteWorkoutResponse{DeletedID: workoutID}, nil
 }
 
 func (s *Service) LikeWorkout(ctx context.Context, userID, workoutID string) (*schema.WorkoutResponse, error) {
@@ -101,15 +325,22 @@ func (s *Service) LikeWorkout(ctx context.Context, userID, workoutID string) (*s
 		return nil, errors.New("workout id is required")
 	}
 
-	workout, err := s.repo.LikeWorkout(ctx, workoutID, userID)
+	workout, err := s.repo.GetByID(ctx, workoutID)
 	if err != nil {
 		if errors.Is(err, modelworkout.ErrWorkoutNotFound) {
 			return nil, ErrWorkoutNotFound
 		}
 		return nil, err
 	}
+	if err := s.socialRepo.LikeWorkout(ctx, workoutID, userID); err != nil {
+		return nil, err
+	}
+	likeSummaries, err := s.socialRepo.GetWorkoutLikeSummaries(ctx, userID, []string{workoutID})
+	if err != nil {
+		return nil, err
+	}
 
-	return &schema.WorkoutResponse{Workout: toWorkoutPayload(workout, userID)}, nil
+	return &schema.WorkoutResponse{Workout: toWorkoutPayload(workout, workout.Stats.PRCount > 0, likeSummaries[workoutID])}, nil
 }
 
 func (s *Service) UnlikeWorkout(ctx context.Context, userID, workoutID string) (*schema.WorkoutResponse, error) {
@@ -123,15 +354,22 @@ func (s *Service) UnlikeWorkout(ctx context.Context, userID, workoutID string) (
 		return nil, errors.New("workout id is required")
 	}
 
-	workout, err := s.repo.UnlikeWorkout(ctx, workoutID, userID)
+	workout, err := s.repo.GetByID(ctx, workoutID)
 	if err != nil {
 		if errors.Is(err, modelworkout.ErrWorkoutNotFound) {
 			return nil, ErrWorkoutNotFound
 		}
 		return nil, err
 	}
+	if err := s.socialRepo.UnlikeWorkout(ctx, workoutID, userID); err != nil {
+		return nil, err
+	}
+	likeSummaries, err := s.socialRepo.GetWorkoutLikeSummaries(ctx, userID, []string{workoutID})
+	if err != nil {
+		return nil, err
+	}
 
-	return &schema.WorkoutResponse{Workout: toWorkoutPayload(workout, userID)}, nil
+	return &schema.WorkoutResponse{Workout: toWorkoutPayload(workout, workout.Stats.PRCount > 0, likeSummaries[workoutID])}, nil
 }
 
 func (s *Service) buildWorkoutExercises(ctx context.Context, workout *modelworkout.Workout, inputs []schema.CreateWorkoutExerciseInput, routineExercises []*modelroutine.RoutineExercise, now time.Time) ([]*modelworkout.WorkoutExercise, modelworkout.WorkoutStats, []*modelworkout.PersonalRecord, error) {
@@ -209,11 +447,9 @@ func buildWorkoutSets(workout *modelworkout.Workout, routineExercise *modelrouti
 	seenSetNumbers := make(map[int]struct{}, len(inputs))
 	sets := make([]*modelworkout.WorkoutExerciseSet, 0, len(inputs))
 	stats := modelworkout.WorkoutStats{}
-	workingRecord := clonePersonalRecord(currentRecord)
-	createdRecords := make([]*modelworkout.PersonalRecord, 0)
-	exerciseHadPR := false
+	bestSetIndex := -1
 
-	for _, input := range inputs {
+	for idx, input := range inputs {
 		if input.SetNumber <= 0 {
 			return nil, stats, nil, errors.New("set_number must be greater than 0")
 		}
@@ -233,15 +469,6 @@ func buildWorkoutSets(workout *modelworkout.Workout, routineExercise *modelrouti
 			return nil, stats, nil, errors.New("actual_weight_kg must be greater than or equal to 0")
 		}
 
-		prFlags, nextRecord, createdRecord := evaluatePR(workout, routineExercise, input.ActualWeightKG, input.ActualReps, now, workingRecord)
-		if prFlags.WeightPR || prFlags.RepPR || prFlags.Estimated1RMPR {
-			exerciseHadPR = true
-		}
-		workingRecord = nextRecord
-		if createdRecord != nil {
-			createdRecords = append(createdRecords, createdRecord)
-		}
-
 		sets = append(sets, &modelworkout.WorkoutExerciseSet{
 			SetNumber:       input.SetNumber,
 			PlannedMinReps:  routineSet.MinReps,
@@ -249,19 +476,44 @@ func buildWorkoutSets(workout *modelworkout.Workout, routineExercise *modelrouti
 			PlannedWeightKG: routineSet.TargetWeightKG,
 			ActualReps:      input.ActualReps,
 			ActualWeightKG:  input.ActualWeightKG,
-			PRFlags:         prFlags,
+			PRFlags:         modelworkout.PRFlags{},
 		})
+		if bestSetIndex == -1 || isBetterWorkoutSet(input, inputs[bestSetIndex]) {
+			bestSetIndex = idx
+		}
 
 		stats.TotalSets++
 		stats.TotalReps += input.ActualReps
 		stats.TotalVolume += float64(input.ActualReps) * input.ActualWeightKG
 	}
 
-	if exerciseHadPR {
-		stats.PRCount = 1
+	if bestSetIndex >= 0 {
+		bestSet := inputs[bestSetIndex]
+		prFlags, _, createdRecord := evaluatePR(workout, routineExercise, bestSet.ActualWeightKG, bestSet.ActualReps, now, currentRecord)
+		sets[bestSetIndex].PRFlags = prFlags
+		if createdRecord != nil {
+			stats.PRCount = 1
+			return sets, stats, []*modelworkout.PersonalRecord{createdRecord}, nil
+		}
 	}
 
-	return sets, stats, createdRecords, nil
+	return sets, stats, nil, nil
+}
+
+func isBetterWorkoutSet(candidate, currentBest schema.CreateWorkoutSetInput) bool {
+	candidate1RM := estimateOneRM(candidate.ActualWeightKG, candidate.ActualReps)
+	currentBest1RM := estimateOneRM(currentBest.ActualWeightKG, currentBest.ActualReps)
+
+	if candidate1RM != currentBest1RM {
+		return candidate1RM > currentBest1RM
+	}
+	if candidate.ActualWeightKG != currentBest.ActualWeightKG {
+		return candidate.ActualWeightKG > currentBest.ActualWeightKG
+	}
+	if candidate.ActualReps != currentBest.ActualReps {
+		return candidate.ActualReps > currentBest.ActualReps
+	}
+	return candidate.SetNumber < currentBest.SetNumber
 }
 
 func evaluatePR(workout *modelworkout.Workout, routineExercise *modelroutine.RoutineExercise, actualWeight float64, actualReps int, now time.Time, current *modelworkout.PersonalRecord) (modelworkout.PRFlags, *modelworkout.PersonalRecord, *modelworkout.PersonalRecord) {
@@ -270,7 +522,6 @@ func evaluatePR(workout *modelworkout.Workout, routineExercise *modelroutine.Rou
 
 	if current == nil {
 		record := &modelworkout.PersonalRecord{
-			ID:           personalRecordID(),
 			UserID:       workout.UserID,
 			ExerciseID:   routineExercise.ExerciseID,
 			ExerciseName: routineExercise.Exercise.Name,
@@ -307,7 +558,6 @@ func evaluatePR(workout *modelworkout.Workout, routineExercise *modelroutine.Rou
 		next.WorkoutID = workout.ID
 		next.UpdatedAt = now
 		record := &modelworkout.PersonalRecord{
-			ID:           personalRecordID(),
 			UserID:       workout.UserID,
 			ExerciseID:   routineExercise.ExerciseID,
 			ExerciseName: next.ExerciseName,
@@ -323,7 +573,7 @@ func evaluatePR(workout *modelworkout.Workout, routineExercise *modelroutine.Rou
 	return flags, current, nil
 }
 
-func toWorkoutPayload(workout *modelworkout.Workout, viewerUserID string) *schema.WorkoutPayload {
+func toWorkoutPayload(workout *modelworkout.Workout, hasPR bool, likeSummary *modelsocial.WorkoutLikeSummary) *schema.WorkoutPayload {
 	exercises := make([]*schema.WorkoutExercisePayload, 0, len(workout.Exercises))
 	for _, exercise := range workout.Exercises {
 		sets := make([]*schema.WorkoutSetPayload, 0, len(exercise.Sets))
@@ -351,12 +601,11 @@ func toWorkoutPayload(workout *modelworkout.Workout, viewerUserID string) *schem
 		})
 	}
 
+	likesCount := 0
 	likedByMe := false
-	for _, likedUserID := range workout.LikedBy {
-		if likedUserID == viewerUserID {
-			likedByMe = true
-			break
-		}
+	if likeSummary != nil {
+		likesCount = likeSummary.LikesCount
+		likedByMe = likeSummary.LikedByMe
 	}
 
 	return &schema.WorkoutPayload{
@@ -369,7 +618,8 @@ func toWorkoutPayload(workout *modelworkout.Workout, viewerUserID string) *schem
 		DurationSec: workout.DurationSec,
 		Visibility:  workout.Visibility,
 		Notes:       workout.Notes,
-		LikesCount:  len(workout.LikedBy),
+		HasPR:       hasPR,
+		LikesCount:  likesCount,
 		LikedByMe:   likedByMe,
 		Exercises:   exercises,
 		Stats: schema.WorkoutStatsPayload{
@@ -395,10 +645,6 @@ func clonePersonalRecord(record *modelworkout.PersonalRecord) *modelworkout.Pers
 
 	copy := *record
 	return &copy
-}
-
-func personalRecordID() string {
-	return "pr_" + uuid.NewString()
 }
 
 func normalizeOptionalText(value *string) *string {

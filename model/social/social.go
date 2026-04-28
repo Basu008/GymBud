@@ -14,3 +14,9 @@ type FollowCounts struct {
 	Followers int64
 	Following int64
 }
+
+type WorkoutLikeSummary struct {
+	WorkoutID  string
+	LikesCount int
+	LikedByMe  bool
+}

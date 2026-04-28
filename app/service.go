@@ -58,6 +58,8 @@ func InitService(a *App) error {
 	a.WorkoutService = workout.NewWorkoutService(&workout.Opts{
 		Repo:        workoutRepo,
 		RoutineRepo: routineRepo,
+		SocialRepo:  socialRepo,
+		UserRepo:    userRepo,
 		Logger:      a.Logger,
 	})
 

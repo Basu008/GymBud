@@ -17,11 +17,17 @@ type Workout struct {
 	DurationSec int                `bson:"duration_sec" json:"duration_sec"`
 	Visibility  string             `bson:"visibility" json:"visibility"`
 	Notes       *string            `bson:"notes,omitempty" json:"notes,omitempty"`
-	LikedBy     []string           `bson:"liked_by,omitempty" json:"-"`
 	Exercises   []*WorkoutExercise `bson:"exercises" json:"exercises"`
 	Stats       WorkoutStats       `bson:"stats" json:"stats"`
 	CreatedAt   time.Time          `bson:"created_at" json:"created_at"`
 	UpdatedAt   time.Time          `bson:"updated_at" json:"updated_at"`
+}
+
+type ListFilter struct {
+	UserID     string
+	Visibility *string
+	Offset     int64
+	Limit      int64
 }
 
 type WorkoutExercise struct {

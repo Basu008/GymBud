@@ -16,6 +16,8 @@ func (a *API) InitRoutes() {
 	a.Router.APIRoot.Handle("/users/me/active", a.requestAuthHandler(a.updateActive)).Methods("PATCH")
 	a.Router.APIRoot.Handle("/users/me/body-metrics", a.requestAuthHandler(a.createBodyMetrics)).Methods("POST")
 	a.Router.APIRoot.Handle("/users/me/body-metrics/{id}", a.requestAuthHandler(a.deleteBodyMetrics)).Methods("DELETE")
+	a.Router.APIRoot.Handle("/users/me/workouts", a.requestAuthHandler(a.listCurrentUserWorkouts)).Methods("GET")
+	a.Router.APIRoot.Handle("/users/{id}/workouts", a.requestAuthHandler(a.listUserWorkouts)).Methods("GET")
 
 	//Social
 	a.Router.APIRoot.Handle("/users/{id}/follow", a.requestAuthHandler(a.followUser)).Methods("POST")
@@ -35,11 +37,14 @@ func (a *API) InitRoutes() {
 	a.Router.APIRoot.Handle("/routines", a.requestAuthHandler(a.createRoutine)).Methods("POST")
 	a.Router.APIRoot.Handle("/routines/{id}/copy", a.requestAuthHandler(a.copyRoutine)).Methods("POST")
 	a.Router.APIRoot.Handle("/routines/{id}", a.requestAuthHandler(a.getRoutineByID)).Methods("GET")
+	a.Router.APIRoot.Handle("/routines/{id}/workouts/latest", a.requestAuthHandler(a.getLatestWorkoutByRoutineID)).Methods("GET")
 	a.Router.APIRoot.Handle("/routines/{id}", a.requestAuthHandler(a.updateRoutine)).Methods("PATCH")
 	a.Router.APIRoot.Handle("/routines/{id}", a.requestAuthHandler(a.deleteRoutine)).Methods("DELETE")
 
 	//Workouts
 	a.Router.APIRoot.Handle("/workouts", a.requestAuthHandler(a.createWorkout)).Methods("POST")
+	a.Router.APIRoot.Handle("/workouts/{id}", a.requestAuthHandler(a.getWorkoutByID)).Methods("GET")
+	a.Router.APIRoot.Handle("/workouts/{id}", a.requestAuthHandler(a.deleteWorkout)).Methods("DELETE")
 	a.Router.APIRoot.Handle("/workouts/{id}/like", a.requestAuthHandler(a.likeWorkout)).Methods("POST")
 	a.Router.APIRoot.Handle("/workouts/{id}/like", a.requestAuthHandler(a.unlikeWorkout)).Methods("DELETE")
 }

@@ -42,6 +42,19 @@ func (r *SocialRepo) initTable() error {
 		return fmt.Errorf("create follows table: %w", err)
 	}
 
+	const createWorkoutLikesTable = `
+		CREATE TABLE IF NOT EXISTS public.workout_likes (
+			workout_id VARCHAR NOT NULL,
+			user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			PRIMARY KEY (workout_id, user_id)
+		)
+	`
+
+	if _, err := r.db.Exec(ctx, createWorkoutLikesTable); err != nil {
+		return fmt.Errorf("create workout_likes table: %w", err)
+	}
+
 	return nil
 }
 
@@ -170,4 +183,70 @@ func (r *SocialRepo) RejectFollowRequest(ctx context.Context, followerID, follow
 	}
 
 	return nil
+}
+
+func (r *SocialRepo) LikeWorkout(ctx context.Context, workoutID, userID string) error {
+	const query = `
+		INSERT INTO workout_likes (workout_id, user_id, created_at)
+		VALUES ($1, $2, NOW())
+		ON CONFLICT (workout_id, user_id) DO NOTHING
+	`
+
+	if _, err := r.db.Exec(ctx, query, workoutID, userID); err != nil {
+		return fmt.Errorf("like workout: %w", err)
+	}
+
+	return nil
+}
+
+func (r *SocialRepo) UnlikeWorkout(ctx context.Context, workoutID, userID string) error {
+	if _, err := r.db.Exec(ctx, `DELETE FROM workout_likes WHERE workout_id = $1 AND user_id = $2`, workoutID, userID); err != nil {
+		return fmt.Errorf("unlike workout: %w", err)
+	}
+
+	return nil
+}
+
+func (r *SocialRepo) DeleteWorkoutLikes(ctx context.Context, workoutID string) error {
+	if _, err := r.db.Exec(ctx, `DELETE FROM workout_likes WHERE workout_id = $1`, workoutID); err != nil {
+		return fmt.Errorf("delete workout likes: %w", err)
+	}
+
+	return nil
+}
+
+func (r *SocialRepo) GetWorkoutLikeSummaries(ctx context.Context, viewerUserID string, workoutIDs []string) (map[string]*modelsocial.WorkoutLikeSummary, error) {
+	summaries := make(map[string]*modelsocial.WorkoutLikeSummary, len(workoutIDs))
+	if len(workoutIDs) == 0 {
+		return summaries, nil
+	}
+
+	const query = `
+		SELECT
+			workout_id,
+			COUNT(*)::INT AS likes_count,
+			BOOL_OR(user_id::TEXT = $2) AS liked_by_me
+		FROM workout_likes
+		WHERE workout_id = ANY($1)
+		GROUP BY workout_id
+	`
+
+	rows, err := r.db.Query(ctx, query, workoutIDs, viewerUserID)
+	if err != nil {
+		return nil, fmt.Errorf("get workout like summaries: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var summary modelsocial.WorkoutLikeSummary
+		if err := rows.Scan(&summary.WorkoutID, &summary.LikesCount, &summary.LikedByMe); err != nil {
+			return nil, fmt.Errorf("scan workout like summary: %w", err)
+		}
+		summaries[summary.WorkoutID] = &summary
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate workout like summaries: %w", err)
+	}
+
+	return summaries, nil
 }
