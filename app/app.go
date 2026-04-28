@@ -10,11 +10,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 type App struct {
 	Logger   *zerolog.Logger
 	Config   *config.Config
+	Mongo    *mongo.Database
 	Postgres *pgxpool.Pool
 	Redis    *redis.Client
 
@@ -29,6 +31,7 @@ type App struct {
 type Options struct {
 	Logger   *zerolog.Logger
 	Config   *config.Config
+	Mongo    *mongo.Database
 	Postgres *pgxpool.Pool
 	Redis    *redis.Client
 }
@@ -37,6 +40,7 @@ func NewApp(opts *Options) *App {
 	return &App{
 		Logger:   opts.Logger,
 		Config:   opts.Config,
+		Mongo:    opts.Mongo,
 		Postgres: opts.Postgres,
 		Redis:    opts.Redis,
 	}

@@ -11,8 +11,8 @@ import (
 type Config struct {
 	ServerConfig           ServerConfig           `mapstructure:"server"`
 	TokenAuthConfig        TokenAuthConfig        `mapstructure:"tokenAuth"`
-	MongoDatabaseConfig    MongoDatabaseConfig    `mapstructure:"mongoDatabase"`
-	PostgresDatabaseConfig PostgresDatabaseConfig `mapstructure:"postgresDatabase"`
+	MongoDatabaseConfig    MongoDatabaseConfig    `mapstructure:"mongoDB"`
+	PostgresDatabaseConfig PostgresDatabaseConfig `mapstructure:"postgres"`
 	RedisConfig            RedisConfig            `mapstructure:"redis"`
 	MiddleWareConfig       MiddleWareConfig       `mapstructure:"middleWare"`
 	AdditionalConfig       AdditionalConfig       `mapstructure:"additional"`
@@ -37,6 +37,9 @@ type TokenAuthConfig struct {
 }
 
 type MongoDatabaseConfig struct {
+	URI            string        `mapstructure:"uri"`
+	Database       string        `mapstructure:"database"`
+	ConnectTimeout time.Duration `mapstructure:"connectTimeout"`
 }
 
 type PostgresDatabaseConfig struct {

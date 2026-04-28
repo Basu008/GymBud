@@ -20,6 +20,7 @@ import (
 	"github.com/rs/cors"
 	"github.com/rs/zerolog"
 	"github.com/urfave/negroni/v3"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 /*
@@ -32,6 +33,7 @@ type Server struct {
 	Log        *zerolog.Logger
 	Config     *config.Config
 
+	Mongo    *mongo.Client
 	Postgres *pgxpool.Pool
 	Redis    *redis.Client
 
@@ -48,6 +50,7 @@ func NewServer() *Server {
 
 	server.InitLogger()
 
+	server.Mongo = database.NewMongoClient(c.MongoDatabaseConfig)
 	server.Postgres = database.NewPostgresPool(c.PostgresDatabaseConfig)
 	server.Redis = database.NewRedisClient(c.RedisConfig)
 
@@ -59,6 +62,7 @@ func NewServer() *Server {
 	a := app.NewApp(&app.Options{
 		Logger:   &appLogger,
 		Config:   c,
+		Mongo:    server.Mongo.Database(c.MongoDatabaseConfig.Database),
 		Postgres: server.Postgres,
 		Redis:    server.Redis,
 	})
@@ -138,6 +142,11 @@ func (s *Server) StopServer() {
 
 	s.Log.Debug().Msg("Shutting down server")
 	s.httpServer.Shutdown(ctx)
+	if s.Mongo != nil {
+		if err := s.Mongo.Disconnect(ctx); err != nil {
+			s.Log.Error().Err(err).Msg("failed to disconnect mongo client")
+		}
+	}
 	if s.Postgres != nil {
 		s.Postgres.Close()
 	}
