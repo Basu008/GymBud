@@ -2,6 +2,13 @@ package schema
 
 import "time"
 
+type WorkoutUserPayload struct {
+	ID              string  `json:"id"`
+	Username        string  `json:"username"`
+	DisplayName     string  `json:"display_name"`
+	ProfileImageURL *string `json:"profile_image_url,omitempty"`
+}
+
 type CreateWorkoutSetInput struct {
 	SetNumber      int     `json:"set_number" validate:"required"`
 	ActualReps     int     `json:"actual_reps" validate:"required"`
@@ -30,8 +37,8 @@ type WorkoutPRFlagsPayload struct {
 
 type WorkoutSetPayload struct {
 	SetNumber       int                   `json:"set_number"`
-	PlannedMinReps  int                   `json:"planned_min_reps"`
-	PlannedMaxReps  int                   `json:"planned_max_reps"`
+	PlannedMinReps  *int                  `json:"planned_min_reps,omitempty"`
+	PlannedMaxReps  *int                  `json:"planned_max_reps,omitempty"`
 	PlannedWeightKG *float64              `json:"planned_weight_kg,omitempty"`
 	ActualReps      int                   `json:"actual_reps"`
 	ActualWeightKG  float64               `json:"actual_weight_kg"`
@@ -68,6 +75,7 @@ type WorkoutAnalyticsResponse struct {
 type WorkoutPayload struct {
 	ID          string                    `json:"id"`
 	UserID      string                    `json:"user_id"`
+	User        *WorkoutUserPayload       `json:"user,omitempty"`
 	RoutineID   string                    `json:"routine_id"`
 	Title       string                    `json:"title"`
 	StartedAt   time.Time                 `json:"started_at"`
