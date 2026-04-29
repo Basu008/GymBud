@@ -207,6 +207,83 @@ func (s *Service) GetWorkoutAnalytics(ctx context.Context, viewerUserID, targetU
 	}, nil
 }
 
+func (s *Service) ListFollowingWorkouts(ctx context.Context, viewerUserID string, page, limit int, startedAtGTE, startedAtLT *time.Time) (*schema.WorkoutsResponse, error) {
+	viewerUserID = strings.TrimSpace(viewerUserID)
+
+	if _, err := uuid.Parse(viewerUserID); err != nil {
+		return nil, err
+	}
+
+	followingIDs, err := s.socialRepo.ListFollowingIDs(ctx, viewerUserID)
+	if err != nil {
+		return nil, err
+	}
+
+	publicVisibility := "all"
+	workouts := make([]*modelworkout.Workout, 0)
+	var total int64
+	if len(followingIDs) > 0 {
+		offset := int64((page - 1) * limit)
+		workouts, total, err = s.repo.ListFeedByUserIDs(ctx, &modelworkout.ListFilter{
+			UserIDs:      followingIDs,
+			Visibility:   &publicVisibility,
+			StartedAtGTE: startedAtGTE,
+			StartedAtLT:  startedAtLT,
+			Offset:       offset,
+			Limit:        int64(limit),
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	currentPRWorkoutIDs := map[string]bool{}
+	likeSummaries := map[string]*modelsocial.WorkoutLikeSummary{}
+	if len(workouts) > 0 {
+		workoutIDs := make([]string, 0, len(workouts))
+		workoutIDsByUser := make(map[string][]string)
+		for _, workout := range workouts {
+			workoutIDs = append(workoutIDs, workout.ID)
+			workoutIDsByUser[workout.UserID] = append(workoutIDsByUser[workout.UserID], workout.ID)
+		}
+
+		for ownerUserID, ownerWorkoutIDs := range workoutIDsByUser {
+			ownerPRWorkoutIDs, err := s.repo.GetCurrentPRWorkoutIDs(ctx, ownerUserID, ownerWorkoutIDs)
+			if err != nil {
+				return nil, err
+			}
+			for workoutID, hasPR := range ownerPRWorkoutIDs {
+				currentPRWorkoutIDs[workoutID] = hasPR
+			}
+		}
+
+		likeSummaries, err = s.socialRepo.GetWorkoutLikeSummaries(ctx, viewerUserID, workoutIDs)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	payloads := make([]*schema.WorkoutPayload, 0, len(workouts))
+	for _, workout := range workouts {
+		payloads = append(payloads, toWorkoutPayload(workout, currentPRWorkoutIDs[workout.ID], likeSummaries[workout.ID]))
+	}
+
+	totalPages := 0
+	if total > 0 {
+		totalPages = int((total + int64(limit) - 1) / int64(limit))
+	}
+
+	return &schema.WorkoutsResponse{
+		Workouts: payloads,
+		Pagination: schema.PaginationPayload{
+			Page:       page,
+			Limit:      limit,
+			Total:      total,
+			TotalPages: totalPages,
+		},
+	}, nil
+}
+
 func (s *Service) GetWorkoutByID(ctx context.Context, viewerUserID, workoutID string) (*schema.WorkoutResponse, error) {
 	viewerUserID = strings.TrimSpace(viewerUserID)
 	workoutID = strings.TrimSpace(workoutID)

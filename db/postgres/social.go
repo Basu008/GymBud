@@ -73,6 +73,33 @@ func (r *SocialRepo) GetFollowCounts(ctx context.Context, userID string) (*model
 	return &counts, nil
 }
 
+func (r *SocialRepo) ListFollowingIDs(ctx context.Context, userID string) ([]string, error) {
+	rows, err := r.db.Query(
+		ctx,
+		`SELECT followee_id::TEXT FROM follows WHERE follower_id = $1 AND status = $2 ORDER BY created_at DESC`,
+		userID,
+		modelsocial.FollowStatusAccepted,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list following ids: %w", err)
+	}
+	defer rows.Close()
+
+	followingIDs := make([]string, 0)
+	for rows.Next() {
+		var followeeID string
+		if err := rows.Scan(&followeeID); err != nil {
+			return nil, fmt.Errorf("scan following id: %w", err)
+		}
+		followingIDs = append(followingIDs, followeeID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate following ids: %w", err)
+	}
+
+	return followingIDs, nil
+}
+
 func (r *SocialRepo) IsFollowing(ctx context.Context, followerID, followeeID string) (bool, error) {
 	var exists bool
 	err := r.db.QueryRow(

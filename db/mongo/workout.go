@@ -185,6 +185,40 @@ func (r *WorkoutRepo) ListAllByUserID(ctx context.Context, filter *modelworkout.
 	return workouts, nil
 }
 
+func (r *WorkoutRepo) ListFeedByUserIDs(ctx context.Context, filter *modelworkout.ListFilter) ([]*modelworkout.Workout, int64, error) {
+	query := buildWorkoutListQuery(filter)
+
+	total, err := r.collection.CountDocuments(ctx, query)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count feed workouts: %w", err)
+	}
+
+	cursor, err := r.collection.Find(
+		ctx,
+		query,
+		options.Find().
+			SetSort(bson.D{{Key: "created_at", Value: -1}, {Key: "_id", Value: -1}}).
+			SetSkip(filter.Offset).
+			SetLimit(filter.Limit),
+	)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list feed workouts: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var docs []*workoutDocument
+	if err := cursor.All(ctx, &docs); err != nil {
+		return nil, 0, fmt.Errorf("decode feed workouts: %w", err)
+	}
+
+	workouts := make([]*modelworkout.Workout, 0, len(docs))
+	for _, doc := range docs {
+		workouts = append(workouts, workoutModelFromDocument(doc))
+	}
+
+	return workouts, total, nil
+}
+
 func (r *WorkoutRepo) GetCurrentPRWorkoutIDs(ctx context.Context, userID string, workoutIDs []string) (map[string]bool, error) {
 	if len(workoutIDs) == 0 {
 		return map[string]bool{}, nil
@@ -249,7 +283,12 @@ func (r *WorkoutRepo) CreatePersonalRecord(ctx context.Context, record *modelwor
 }
 
 func buildWorkoutListQuery(filter *modelworkout.ListFilter) bson.M {
-	query := bson.M{"user_id": filter.UserID}
+	query := bson.M{}
+	if len(filter.UserIDs) > 0 {
+		query["user_id"] = bson.M{"$in": filter.UserIDs}
+	} else {
+		query["user_id"] = filter.UserID
+	}
 	if filter.Visibility != nil {
 		query["visibility"] = *filter.Visibility
 	}

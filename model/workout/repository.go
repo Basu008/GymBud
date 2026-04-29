@@ -9,6 +9,7 @@ type Repository interface {
 	Delete(ctx context.Context, workoutID string) error
 	ListByUserID(ctx context.Context, filter *ListFilter) ([]*Workout, int64, error)
 	ListAllByUserID(ctx context.Context, filter *ListFilter) ([]*Workout, error)
+	ListFeedByUserIDs(ctx context.Context, filter *ListFilter) ([]*Workout, int64, error)
 	GetCurrentPRWorkoutIDs(ctx context.Context, userID string, workoutIDs []string) (map[string]bool, error)
 	GetLatestPersonalRecord(ctx context.Context, userID, exerciseID string) (*PersonalRecord, error)
 	CreatePersonalRecord(ctx context.Context, record *PersonalRecord) error

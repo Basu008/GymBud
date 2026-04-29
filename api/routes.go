@@ -17,6 +17,7 @@ func (a *API) InitRoutes() {
 	a.Router.APIRoot.Handle("/users/me/body-metrics", a.requestAuthHandler(a.createBodyMetrics)).Methods("POST")
 	a.Router.APIRoot.Handle("/users/me/body-metrics/{id}", a.requestAuthHandler(a.deleteBodyMetrics)).Methods("DELETE")
 	a.Router.APIRoot.Handle("/users/me/workouts", a.requestAuthHandler(a.listCurrentUserWorkouts)).Methods("GET")
+	a.Router.APIRoot.Handle("/users/me/following/workouts", a.requestAuthHandler(a.listFollowingWorkouts)).Methods("GET")
 	a.Router.APIRoot.Handle("/users/me/workouts/analytics", a.requestAuthHandler(a.getCurrentUserWorkoutAnalytics)).Methods("GET")
 	a.Router.APIRoot.Handle("/users/{id}/workouts", a.requestAuthHandler(a.listUserWorkouts)).Methods("GET")
 	a.Router.APIRoot.Handle("/users/{id}/workouts/analytics", a.requestAuthHandler(a.getUserWorkoutAnalytics)).Methods("GET")

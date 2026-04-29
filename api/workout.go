@@ -141,6 +141,27 @@ func (a *API) listCurrentUserWorkouts(ctx *handler.RequestCtx, w http.ResponseWr
 	handler.OK(w, response)
 }
 
+func (a *API) listFollowingWorkouts(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
+	page, limit, err := a.paginationParams(r)
+	if err != nil {
+		handler.BadRequest(w, "page and limit must be positive integers")
+		return
+	}
+	startedAtGTE, startedAtLT, err := a.workoutAnalyticsDateRange(r)
+	if err != nil {
+		handler.BadRequest(w, "start_date and end_date must be valid YYYY-MM-DD values, and end_date must be on or after start_date")
+		return
+	}
+
+	response, err := a.App.WorkoutService.ListFollowingWorkouts(r.Context(), ctx.UserClaim.UserID, page, limit, startedAtGTE, startedAtLT)
+	if err != nil {
+		handler.BadRequest(w, err.Error())
+		return
+	}
+
+	handler.OK(w, response)
+}
+
 func (a *API) getCurrentUserWorkoutAnalytics(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
 	startedAtGTE, startedAtLT, err := a.workoutAnalyticsDateRange(r)
 	if err != nil {

@@ -25,6 +25,7 @@ type Workout struct {
 
 type ListFilter struct {
 	UserID       string
+	UserIDs      []string
 	Visibility   *string
 	StartedAtGTE *time.Time
 	StartedAtLT  *time.Time
