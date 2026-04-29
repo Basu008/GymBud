@@ -52,6 +52,19 @@ type WorkoutStatsPayload struct {
 	PRCount     int     `json:"pr_count"`
 }
 
+type WorkoutAnalyticsStatsPayload struct {
+	WorkoutsCount int     `json:"workouts_count"`
+	TotalVolume   float64 `json:"total_volume"`
+	TotalSets     int     `json:"total_sets"`
+	TotalReps     int     `json:"total_reps"`
+	PRCount       int     `json:"pr_count"`
+}
+
+type WorkoutAnalyticsResponse struct {
+	UserID string                       `json:"user_id"`
+	Stats  WorkoutAnalyticsStatsPayload `json:"stats"`
+}
+
 type WorkoutPayload struct {
 	ID          string                    `json:"id"`
 	UserID      string                    `json:"user_id"`
@@ -87,6 +100,6 @@ type PaginationPayload struct {
 }
 
 type WorkoutsResponse struct {
-	Workouts   []*WorkoutPayload   `json:"workouts"`
+	Workouts   []*WorkoutPayload `json:"workouts"`
 	Pagination PaginationPayload `json:"pagination"`
 }

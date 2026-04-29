@@ -24,10 +24,12 @@ type Workout struct {
 }
 
 type ListFilter struct {
-	UserID     string
-	Visibility *string
-	Offset     int64
-	Limit      int64
+	UserID       string
+	Visibility   *string
+	StartedAtGTE *time.Time
+	StartedAtLT  *time.Time
+	Offset       int64
+	Limit        int64
 }
 
 type WorkoutExercise struct {

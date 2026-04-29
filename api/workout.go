@@ -93,9 +93,14 @@ func (a *API) listUserWorkouts(ctx *handler.RequestCtx, w http.ResponseWriter, r
 		handler.BadRequest(w, "page and limit must be positive integers")
 		return
 	}
+	startedAtGTE, startedAtLT, err := a.workoutAnalyticsDateRange(r)
+	if err != nil {
+		handler.BadRequest(w, "start_date and end_date must be valid YYYY-MM-DD values, and end_date must be on or after start_date")
+		return
+	}
 
 	userID := pathID(r)
-	response, err := a.App.WorkoutService.ListUserWorkouts(r.Context(), ctx.UserClaim.UserID, userID, page, limit)
+	response, err := a.App.WorkoutService.ListUserWorkouts(r.Context(), ctx.UserClaim.UserID, userID, page, limit, startedAtGTE, startedAtLT)
 	if err != nil {
 		switch {
 		case errors.Is(err, appworkout.ErrUserNotFound):
@@ -117,14 +122,63 @@ func (a *API) listCurrentUserWorkouts(ctx *handler.RequestCtx, w http.ResponseWr
 		handler.BadRequest(w, "page and limit must be positive integers")
 		return
 	}
+	startedAtGTE, startedAtLT, err := a.workoutAnalyticsDateRange(r)
+	if err != nil {
+		handler.BadRequest(w, "start_date and end_date must be valid YYYY-MM-DD values, and end_date must be on or after start_date")
+		return
+	}
 
-	response, err := a.App.WorkoutService.ListUserWorkouts(r.Context(), ctx.UserClaim.UserID, ctx.UserClaim.UserID, page, limit)
+	response, err := a.App.WorkoutService.ListUserWorkouts(r.Context(), ctx.UserClaim.UserID, ctx.UserClaim.UserID, page, limit, startedAtGTE, startedAtLT)
 	if err != nil {
 		if errors.Is(err, appworkout.ErrUserNotFound) {
 			handler.NotFound(w, err.Error())
 			return
 		}
 		handler.BadRequest(w, err.Error())
+		return
+	}
+
+	handler.OK(w, response)
+}
+
+func (a *API) getCurrentUserWorkoutAnalytics(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
+	startedAtGTE, startedAtLT, err := a.workoutAnalyticsDateRange(r)
+	if err != nil {
+		handler.BadRequest(w, "start_date and end_date must be valid YYYY-MM-DD values, and end_date must be on or after start_date")
+		return
+	}
+
+	response, err := a.App.WorkoutService.GetWorkoutAnalytics(r.Context(), ctx.UserClaim.UserID, ctx.UserClaim.UserID, startedAtGTE, startedAtLT)
+	if err != nil {
+		if errors.Is(err, appworkout.ErrUserNotFound) {
+			handler.NotFound(w, err.Error())
+			return
+		}
+		handler.BadRequest(w, err.Error())
+		return
+	}
+
+	handler.OK(w, response)
+}
+
+func (a *API) getUserWorkoutAnalytics(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
+	startedAtGTE, startedAtLT, err := a.workoutAnalyticsDateRange(r)
+	if err != nil {
+		handler.BadRequest(w, "start_date and end_date must be valid YYYY-MM-DD values, and end_date must be on or after start_date")
+		return
+	}
+
+	userID := pathID(r)
+	response, err := a.App.WorkoutService.GetWorkoutAnalytics(r.Context(), ctx.UserClaim.UserID, userID, startedAtGTE, startedAtLT)
+	if err != nil {
+		switch {
+		case errors.Is(err, appworkout.ErrUserNotFound):
+			handler.NotFound(w, err.Error())
+		case errors.Is(err, appworkout.ErrWorkoutAccessDenied):
+			handler.Forbidden(w, err.Error())
+		default:
+			handler.BadRequest(w, err.Error())
+		}
 		return
 	}
 

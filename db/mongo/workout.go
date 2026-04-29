@@ -18,31 +18,31 @@ type WorkoutRepo struct {
 }
 
 type workoutDocument struct {
-	ID          bson.ObjectID                       `bson:"_id,omitempty"`
-	UserID      string                              `bson:"user_id"`
-	RoutineID   string                              `bson:"routine_id"`
-	Title       string                              `bson:"title"`
-	StartedAt   time.Time                           `bson:"started_at"`
-	EndedAt     time.Time                           `bson:"ended_at"`
-	DurationSec int                                 `bson:"duration_sec"`
-	Visibility  string                              `bson:"visibility"`
-	Notes       *string                             `bson:"notes,omitempty"`
-	Exercises   []*modelworkout.WorkoutExercise     `bson:"exercises"`
-	Stats       modelworkout.WorkoutStats           `bson:"stats"`
-	CreatedAt   time.Time                           `bson:"created_at"`
-	UpdatedAt   time.Time                           `bson:"updated_at"`
+	ID          bson.ObjectID                   `bson:"_id,omitempty"`
+	UserID      string                          `bson:"user_id"`
+	RoutineID   string                          `bson:"routine_id"`
+	Title       string                          `bson:"title"`
+	StartedAt   time.Time                       `bson:"started_at"`
+	EndedAt     time.Time                       `bson:"ended_at"`
+	DurationSec int                             `bson:"duration_sec"`
+	Visibility  string                          `bson:"visibility"`
+	Notes       *string                         `bson:"notes,omitempty"`
+	Exercises   []*modelworkout.WorkoutExercise `bson:"exercises"`
+	Stats       modelworkout.WorkoutStats       `bson:"stats"`
+	CreatedAt   time.Time                       `bson:"created_at"`
+	UpdatedAt   time.Time                       `bson:"updated_at"`
 }
 
 type personalRecordDocument struct {
 	ID           bson.ObjectID `bson:"_id,omitempty"`
-	UserID       string             `bson:"user_id"`
-	ExerciseID   string             `bson:"exercise_id"`
-	ExerciseName string             `bson:"exercise_name"`
-	BestWeightKG float64            `bson:"best_weight_kg"`
-	BestReps     int                `bson:"best_reps"`
-	Estimated1RM float64            `bson:"estimated_1rm"`
-	WorkoutID    string             `bson:"workout_id"`
-	UpdatedAt    time.Time          `bson:"updated_at"`
+	UserID       string        `bson:"user_id"`
+	ExerciseID   string        `bson:"exercise_id"`
+	ExerciseName string        `bson:"exercise_name"`
+	BestWeightKG float64       `bson:"best_weight_kg"`
+	BestReps     int           `bson:"best_reps"`
+	Estimated1RM float64       `bson:"estimated_1rm"`
+	WorkoutID    string        `bson:"workout_id"`
+	UpdatedAt    time.Time     `bson:"updated_at"`
 }
 
 func NewWorkoutRepo(db *mongodriver.Database) (*WorkoutRepo, error) {
@@ -126,10 +126,7 @@ func (r *WorkoutRepo) Delete(ctx context.Context, workoutID string) error {
 }
 
 func (r *WorkoutRepo) ListByUserID(ctx context.Context, filter *modelworkout.ListFilter) ([]*modelworkout.Workout, int64, error) {
-	query := bson.M{"user_id": filter.UserID}
-	if filter.Visibility != nil {
-		query["visibility"] = *filter.Visibility
-	}
+	query := buildWorkoutListQuery(filter)
 
 	total, err := r.collection.CountDocuments(ctx, query)
 	if err != nil {
@@ -160,6 +157,32 @@ func (r *WorkoutRepo) ListByUserID(ctx context.Context, filter *modelworkout.Lis
 	}
 
 	return workouts, total, nil
+}
+
+func (r *WorkoutRepo) ListAllByUserID(ctx context.Context, filter *modelworkout.ListFilter) ([]*modelworkout.Workout, error) {
+	query := buildWorkoutListQuery(filter)
+
+	cursor, err := r.collection.Find(
+		ctx,
+		query,
+		options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}, {Key: "_id", Value: -1}}),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list all workouts: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var docs []*workoutDocument
+	if err := cursor.All(ctx, &docs); err != nil {
+		return nil, fmt.Errorf("decode all workouts: %w", err)
+	}
+
+	workouts := make([]*modelworkout.Workout, 0, len(docs))
+	for _, doc := range docs {
+		workouts = append(workouts, workoutModelFromDocument(doc))
+	}
+
+	return workouts, nil
 }
 
 func (r *WorkoutRepo) GetCurrentPRWorkoutIDs(ctx context.Context, userID string, workoutIDs []string) (map[string]bool, error) {
@@ -223,6 +246,25 @@ func (r *WorkoutRepo) CreatePersonalRecord(ctx context.Context, record *modelwor
 	}
 
 	return nil
+}
+
+func buildWorkoutListQuery(filter *modelworkout.ListFilter) bson.M {
+	query := bson.M{"user_id": filter.UserID}
+	if filter.Visibility != nil {
+		query["visibility"] = *filter.Visibility
+	}
+	if filter.StartedAtGTE != nil || filter.StartedAtLT != nil {
+		startedAtQuery := bson.M{}
+		if filter.StartedAtGTE != nil {
+			startedAtQuery["$gte"] = *filter.StartedAtGTE
+		}
+		if filter.StartedAtLT != nil {
+			startedAtQuery["$lt"] = *filter.StartedAtLT
+		}
+		query["started_at"] = startedAtQuery
+	}
+
+	return query
 }
 
 func workoutDocumentFromModel(workout *modelworkout.Workout) *workoutDocument {

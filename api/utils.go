@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 	"unicode"
 
 	"github.com/Basu008/GymBud/server/handler"
@@ -19,6 +21,7 @@ func pathID(r *http.Request) string {
 }
 
 var errInvalidPagination = errors.New("invalid pagination params")
+var errInvalidDateRange = errors.New("invalid date range params")
 
 func (a *API) paginationParams(r *http.Request) (int, int, error) {
 	page := 1
@@ -46,6 +49,34 @@ func (a *API) paginationParams(r *http.Request) (int, int, error) {
 		limit = parsedLimit
 	}
 	return page, limit, nil
+}
+
+func (a *API) workoutAnalyticsDateRange(r *http.Request) (*time.Time, *time.Time, error) {
+	startParam := strings.TrimSpace(r.URL.Query().Get("start_date"))
+	endParam := strings.TrimSpace(r.URL.Query().Get("end_date"))
+
+	if startParam == "" && endParam == "" {
+		return nil, nil, nil
+	}
+	if startParam == "" || endParam == "" {
+		return nil, nil, errInvalidDateRange
+	}
+
+	startDate, err := time.Parse("2006-01-02", startParam)
+	if err != nil {
+		return nil, nil, errInvalidDateRange
+	}
+	endDate, err := time.Parse("2006-01-02", endParam)
+	if err != nil {
+		return nil, nil, errInvalidDateRange
+	}
+	if endDate.Before(startDate) {
+		return nil, nil, errInvalidDateRange
+	}
+
+	startedAtGTE := startDate.UTC()
+	startedAtLT := endDate.AddDate(0, 0, 1).UTC()
+	return &startedAtGTE, &startedAtLT, nil
 }
 
 func isStrongPassword(password string) bool {

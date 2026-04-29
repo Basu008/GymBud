@@ -96,7 +96,7 @@ func (s *Service) CreateWorkout(ctx context.Context, userID string, body *schema
 	return &schema.WorkoutResponse{Workout: toWorkoutPayload(workout, workout.Stats.PRCount > 0, nil)}, nil
 }
 
-func (s *Service) ListUserWorkouts(ctx context.Context, viewerUserID, targetUserID string, page, limit int) (*schema.WorkoutsResponse, error) {
+func (s *Service) ListUserWorkouts(ctx context.Context, viewerUserID, targetUserID string, page, limit int, startedAtGTE, startedAtLT *time.Time) (*schema.WorkoutsResponse, error) {
 	viewerUserID = strings.TrimSpace(viewerUserID)
 	targetUserID = strings.TrimSpace(targetUserID)
 
@@ -107,36 +107,19 @@ func (s *Service) ListUserWorkouts(ctx context.Context, viewerUserID, targetUser
 		return nil, err
 	}
 
-	targetUser, err := s.userRepo.GetByID(ctx, targetUserID)
+	visibility, err := s.resolveWorkoutVisibility(ctx, viewerUserID, targetUserID)
 	if err != nil {
-		if errors.Is(err, modeluser.ErrUserNotFound) {
-			return nil, ErrUserNotFound
-		}
 		return nil, err
-	}
-
-	visibility := (*string)(nil)
-	if viewerUserID != targetUserID {
-		publicVisibility := "all"
-		visibility = &publicVisibility
-
-		if targetUser.IsPrivate {
-			isFollowing, err := s.socialRepo.IsFollowing(ctx, viewerUserID, targetUserID)
-			if err != nil {
-				return nil, err
-			}
-			if !isFollowing {
-				return nil, ErrWorkoutAccessDenied
-			}
-		}
 	}
 
 	offset := int64((page - 1) * limit)
 	workouts, total, err := s.repo.ListByUserID(ctx, &modelworkout.ListFilter{
-		UserID:     targetUserID,
-		Visibility: visibility,
-		Offset:     offset,
-		Limit:      int64(limit),
+		UserID:       targetUserID,
+		Visibility:   visibility,
+		StartedAtGTE: startedAtGTE,
+		StartedAtLT:  startedAtLT,
+		Offset:       offset,
+		Limit:        int64(limit),
 	})
 	if err != nil {
 		return nil, err
@@ -178,6 +161,49 @@ func (s *Service) ListUserWorkouts(ctx context.Context, viewerUserID, targetUser
 			Total:      total,
 			TotalPages: totalPages,
 		},
+	}, nil
+}
+
+func (s *Service) GetWorkoutAnalytics(ctx context.Context, viewerUserID, targetUserID string, startedAtGTE, startedAtLT *time.Time) (*schema.WorkoutAnalyticsResponse, error) {
+	viewerUserID = strings.TrimSpace(viewerUserID)
+	targetUserID = strings.TrimSpace(targetUserID)
+
+	if _, err := uuid.Parse(viewerUserID); err != nil {
+		return nil, err
+	}
+	if _, err := uuid.Parse(targetUserID); err != nil {
+		return nil, err
+	}
+
+	visibility, err := s.resolveWorkoutVisibility(ctx, viewerUserID, targetUserID)
+	if err != nil {
+		return nil, err
+	}
+
+	workouts, err := s.repo.ListAllByUserID(ctx, &modelworkout.ListFilter{
+		UserID:       targetUserID,
+		Visibility:   visibility,
+		StartedAtGTE: startedAtGTE,
+		StartedAtLT:  startedAtLT,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	stats := schema.WorkoutAnalyticsStatsPayload{
+		WorkoutsCount: len(workouts),
+	}
+	for _, workout := range workouts {
+		stats.TotalVolume += workout.Stats.TotalVolume
+		stats.TotalSets += workout.Stats.TotalSets
+		stats.TotalReps += workout.Stats.TotalReps
+		stats.PRCount += workout.Stats.PRCount
+	}
+	stats.TotalVolume = math.Round(stats.TotalVolume*100) / 100
+
+	return &schema.WorkoutAnalyticsResponse{
+		UserID: targetUserID,
+		Stats:  stats,
 	}, nil
 }
 
@@ -658,4 +684,32 @@ func normalizeOptionalText(value *string) *string {
 	}
 
 	return &trimmed
+}
+
+func (s *Service) resolveWorkoutVisibility(ctx context.Context, viewerUserID, targetUserID string) (*string, error) {
+	targetUser, err := s.userRepo.GetByID(ctx, targetUserID)
+	if err != nil {
+		if errors.Is(err, modeluser.ErrUserNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, err
+	}
+
+	visibility := (*string)(nil)
+	if viewerUserID != targetUserID {
+		publicVisibility := "all"
+		visibility = &publicVisibility
+
+		if targetUser.IsPrivate {
+			isFollowing, err := s.socialRepo.IsFollowing(ctx, viewerUserID, targetUserID)
+			if err != nil {
+				return nil, err
+			}
+			if !isFollowing {
+				return nil, ErrWorkoutAccessDenied
+			}
+		}
+	}
+
+	return visibility, nil
 }
