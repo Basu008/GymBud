@@ -1,5 +1,6 @@
 .vscode/
-conf/
+conf/*
+!conf/sample.toml
 bin/
 .gocache/
 .gomodcache/

@@ -1,0 +1,116 @@
+[server]
+listenAddress = "0.0.0.0"
+port = "8000"
+environment = "local"
+corsAllowedOrigins = [
+    "http://localhost:3000",
+    "http://localhost:8000"
+]
+corsAllowedMethods = ["GET", "POST", "PUT", "DELETE", "PATCH"]
+corsAllowedHeaders = ["Authorization", "Content-Type", "X-Request-ID"]
+readTimeout = "150s"
+writeTimeout = "150s"
+
+[tokenAuth]
+jwtSecret = "replace-with-a-long-random-secret"
+jwtExpiresAt = "2160h"
+jwtIssuer = "gymBud"
+
+[postgres]
+host = "127.0.0.1"
+port = 5432
+user = "postgres"
+password = "postgres"
+database = "gymbud"
+sslMode = "disable"
+maxConnections = 10
+minConnections = 1
+connectTimeout = "5s"
+healthCheckTime = "1m"
+
+[mongoDB]
+uri = "mongodb://localhost:27017"
+database = "gymbud"
+connectTimeout = "10s"
+
+[redis]
+address = "127.0.0.1:6379"
+password = ""
+database = 0
+connectTimeout = "5s"
+readTimeout = "3s"
+writeTimeout = "3s"
+
+[firebase]
+type = "service_account"
+project_id = "your-firebase-project-id"
+private_key_id = "your-private-key-id"
+private_key = "-----BEGIN PRIVATE KEY-----\nreplace-with-private-key\n-----END PRIVATE KEY-----\n"
+client_email = "firebase-adminsdk@example.iam.gserviceaccount.com"
+client_id = "your-client-id"
+auth_uri = ""
+token_uri = ""
+auth_provider_x509_cert_url = ""
+client_x509_cert_url = ""
+universe_domain = "googleapis.com"
+storage_bucket = "your-firebase-storage-bucket"
+
+[additional]
+workoutPaginationLimit = 20
+exerciseCategories = [
+    "Chest",
+    "Back",
+    "Triceps",
+    "Biceps",
+    "Shoulders",
+    "Legs",
+    "Abs",
+    "Forearms"
+]
+exerciseMuscles = [
+    "Chest",
+    "Upper Chest",
+    "Lower Chest",
+    "Lats",
+    "Upper Back",
+    "Middle Back",
+    "Lower Back",
+    "Shoulders",
+    "Front Delts",
+    "Side Delts",
+    "Rear Delts",
+    "Biceps",
+    "Triceps",
+    "Forearms",
+    "Quads",
+    "Hamstrings",
+    "Glutes",
+    "Calves",
+    "Abs",
+    "Upper Abs",
+    "Lower Abs",
+    "Obliques",
+    "Core"
+]
+exerciseEquipments = [
+    "Body Weight",
+    "Dumbbell",
+    "Barbell",
+    "Cable",
+    "Machine",
+    "Kettlebell",
+    "Smith Machine",
+    "EZ Bar",
+    "Resistance Band",
+    "Medicine Ball",
+    "Bench",
+    "Pull-up Bar",
+    "Trap Bar",
+    "Landmine",
+    "Ab Wheel"
+]
+exerciseDifficulty = [
+    "Beginner",
+    "Intermediate",
+    "Advanced"
+]
