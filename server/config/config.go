@@ -120,15 +120,22 @@ func GetConfig() *Config {
 	var cfg Config
 
 	v := viper.New()
-	v.SetConfigName("default")
-	v.AddConfigPath("../conf")
-	v.AddConfigPath("../../conf")
-	v.AddConfigPath(".")
-	v.AddConfigPath("./conf/")
 	v.SetConfigType("toml")
 
+	// Render Secret File
+	v.SetConfigFile("/etc/secrets/production.toml")
+
 	if err := v.ReadInConfig(); err != nil {
-		log.Fatalf("failed to read config file: %v", err)
+		// Local fallback
+		v.SetConfigName("default")
+		v.AddConfigPath("../conf")
+		v.AddConfigPath("../../conf")
+		v.AddConfigPath(".")
+		v.AddConfigPath("./conf")
+
+		if err := v.ReadInConfig(); err != nil {
+			log.Fatalf("failed to read config file: %v", err)
+		}
 	}
 
 	if err := v.Unmarshal(&cfg); err != nil {

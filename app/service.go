@@ -16,6 +16,10 @@ import (
 func InitService(a *App) error {
 	postgresDB := a.Postgres
 
+	userRepo, err := postgres.NewUserRepo(postgresDB)
+	if err != nil {
+		return fmt.Errorf("init user repository: %w", err)
+	}
 	exerciseRepo, err := postgres.NewExerciseRepo(postgresDB)
 	if err != nil {
 		return fmt.Errorf("init exercise repository: %w", err)
@@ -28,10 +32,6 @@ func InitService(a *App) error {
 	if err != nil {
 		return fmt.Errorf("init workout repository: %w", err)
 	}
-	userRepo, err := postgres.NewUserRepo(postgresDB)
-	if err != nil {
-		return fmt.Errorf("init user repository: %w", err)
-	}
 	socialRepo, err := postgres.NewSocialRepo(postgresDB)
 	if err != nil {
 		return fmt.Errorf("init social repository: %w", err)
@@ -40,6 +40,13 @@ func InitService(a *App) error {
 	if err != nil {
 		return fmt.Errorf("init media repository: %w", err)
 	}
+	a.UserService = user.NewUserService(&user.Opts{
+		Repo:        userRepo,
+		SocialRepo:  socialRepo,
+		MediaRepo:   mediaRepo,
+		Logger:      a.Logger,
+		AuthService: a.AuthService,
+	})
 	a.ExerciseService = exercise.NewExerciseService(&exercise.Opts{
 		Repo:   exerciseRepo,
 		Config: a.Config,
@@ -49,13 +56,6 @@ func InitService(a *App) error {
 		Repo:       routineRepo,
 		SocialRepo: socialRepo,
 		Logger:     a.Logger,
-	})
-	a.UserService = user.NewUserService(&user.Opts{
-		Repo:        userRepo,
-		SocialRepo:  socialRepo,
-		MediaRepo:   mediaRepo,
-		Logger:      a.Logger,
-		AuthService: a.AuthService,
 	})
 	a.SocialService = social.NewSocialService(&social.Opts{
 		Repo:     socialRepo,
