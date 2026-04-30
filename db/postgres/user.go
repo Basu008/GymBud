@@ -59,10 +59,6 @@ func (r *UserRepo) initTable() error {
 		return fmt.Errorf("create users table: %w", err)
 	}
 
-	if _, err := r.db.Exec(ctx, `ALTER TABLE public.users ADD COLUMN IF NOT EXISTS plan VARCHAR NOT NULL DEFAULT 'free'`); err != nil {
-		return fmt.Errorf("ensure users.plan column: %w", err)
-	}
-
 	const createBodyMetricsTable = `
 		CREATE TABLE IF NOT EXISTS public.user_body_metrics (
 			id UUID PRIMARY KEY,

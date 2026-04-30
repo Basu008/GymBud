@@ -107,7 +107,11 @@ type MiddleWareConfig struct {
 }
 
 type AdditionalConfig struct {
-	WorkoutPaginationLimit int `mapstructure:"workoutPaginationLimit"`
+	WorkoutPaginationLimit int      `mapstructure:"workoutPaginationLimit"`
+	ExerciseCategories     []string `mapstructure:"exerciseCategories"`
+	ExerciseMuscles        []string `mapstructure:"exerciseMuscles"`
+	ExerciseEquipments     []string `mapstructure:"exerciseEquipments"`
+	ExerciseDifficulty     []string `mapstructure:"exerciseDifficulty"`
 }
 
 func GetConfig() *Config {

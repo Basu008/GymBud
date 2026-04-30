@@ -370,14 +370,19 @@ func toRoutinePayload(routine *modelroutine.Routine) *schema.RoutinePayload {
 		var exercisePayload *schema.ExercisePayload
 		if exercise.Exercise != nil {
 			exercisePayload = &schema.ExercisePayload{
-				ID:           exercise.Exercise.ID,
-				Name:         exercise.Exercise.Name,
-				Category:     exercise.Exercise.Category,
-				Equipment:    exercise.Exercise.Equipment,
-				MovementMode: exercise.Exercise.MovementMode,
-				IsActive:     exercise.Exercise.IsActive,
-				CreatedAt:    exercise.Exercise.CreatedAt,
-				UpdatedAt:    exercise.Exercise.UpdatedAt,
+				ID:               exercise.Exercise.ID,
+				Name:             exercise.Exercise.Name,
+				Slug:             exercise.Exercise.Slug,
+				Category:         exercise.Exercise.Category,
+				UserID:           exercise.Exercise.UserID,
+				Equipment:        exercise.Exercise.Equipment,
+				PrimaryMuscle:    exercise.Exercise.PrimaryMuscle,
+				SecondaryMuscles: exercise.Exercise.SecondaryMuscles,
+				Difficulty:       exercise.Exercise.Difficulty,
+				MovementMode:     exercise.Exercise.MovementMode,
+				IsActive:         exercise.Exercise.IsActive,
+				CreatedAt:        exercise.Exercise.CreatedAt,
+				UpdatedAt:        exercise.Exercise.UpdatedAt,
 			}
 		}
 

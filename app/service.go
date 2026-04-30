@@ -42,6 +42,7 @@ func InitService(a *App) error {
 	}
 	a.ExerciseService = exercise.NewExerciseService(&exercise.Opts{
 		Repo:   exerciseRepo,
+		Config: a.Config,
 		Logger: a.Logger,
 	})
 	a.RoutineService = routine.NewRoutineService(&routine.Opts{

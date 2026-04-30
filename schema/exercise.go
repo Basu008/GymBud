@@ -3,31 +3,46 @@ package schema
 import "time"
 
 type CreateExerciseBody struct {
-	Name         string  `json:"name" validate:"required"`
-	Category     string  `json:"category" validate:"required"`
-	Equipment    string  `json:"equipment" validate:"required"`
-	MovementMode *string `json:"movement_mode"`
-	IsAdmin      *bool   `json:"is_admin"`
+	Name             string   `json:"name" validate:"required"`
+	Category         string   `json:"category" validate:"required"`
+	Equipment        string   `json:"equipment" validate:"required"`
+	PrimaryMuscle    string   `json:"primary_muscle" validate:"required"`
+	SecondaryMuscles []string `json:"secondary_muscles"`
+	Difficulty       string   `json:"difficulty" validate:"required"`
+	MovementMode     *string  `json:"movement_mode"`
+	IsAdmin          *bool    `json:"is_admin"`
+}
+
+type CreateExercisesBody struct {
+	Exercises []CreateExerciseBody `json:"exercises" validate:"required"`
 }
 
 type UpdateExerciseBody struct {
-	Name         *string `json:"name"`
-	Category     *string `json:"category"`
-	Equipment    *string `json:"equipment"`
-	MovementMode *string `json:"movement_mode"`
-	IsAdmin      *bool   `json:"is_admin"`
-	IsActive     *bool   `json:"is_active"`
+	Name             *string   `json:"name"`
+	Category         *string   `json:"category"`
+	Equipment        *string   `json:"equipment"`
+	PrimaryMuscle    *string   `json:"primary_muscle"`
+	SecondaryMuscles *[]string `json:"secondary_muscles"`
+	Difficulty       *string   `json:"difficulty"`
+	MovementMode     *string   `json:"movement_mode"`
+	IsAdmin          *bool     `json:"is_admin"`
+	IsActive         *bool     `json:"is_active"`
 }
 
 type ExercisePayload struct {
-	ID           string    `json:"id"`
-	Name         string    `json:"name"`
-	Category     string    `json:"category"`
-	Equipment    string    `json:"equipment"`
-	MovementMode *string   `json:"movement_mode,omitempty"`
-	IsActive     bool      `json:"is_active"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID               string    `json:"id"`
+	Name             string    `json:"name"`
+	Slug             string    `json:"slug"`
+	Category         string    `json:"category"`
+	UserID           *string   `json:"user_id,omitempty"`
+	Equipment        string    `json:"equipment"`
+	PrimaryMuscle    string    `json:"primary_muscle"`
+	SecondaryMuscles []string  `json:"secondary_muscles"`
+	Difficulty       string    `json:"difficulty"`
+	MovementMode     *string   `json:"movement_mode,omitempty"`
+	IsActive         bool      `json:"is_active"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 type ExerciseResponse struct {

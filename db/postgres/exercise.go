@@ -34,23 +34,34 @@ func (r *ExerciseRepo) initTable() error {
 		CREATE TABLE IF NOT EXISTS public.exercises (
 			id UUID PRIMARY KEY,
 			name VARCHAR(100) NOT NULL,
+			slug VARCHAR(120) NOT NULL,
 			category VARCHAR(50) NOT NULL,
+			user_id UUID REFERENCES users(id) ON DELETE CASCADE,
 			is_made_by_admin BOOLEAN NOT NULL DEFAULT FALSE,
 			equipment VARCHAR(50) NOT NULL,
+			primary_muscle VARCHAR(50) NOT NULL,
+			secondary_muscles TEXT[] NOT NULL DEFAULT '{}',
+			difficulty VARCHAR(30) NOT NULL,
 			movement_mode VARCHAR(20),
 			is_active BOOLEAN NOT NULL DEFAULT TRUE,
 			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 			updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-			CONSTRAINT exercises_name_equipment_unique UNIQUE (name, equipment),
 			CHECK (
 				movement_mode IS NULL
 				OR movement_mode IN ('unilateral', 'bilateral')
-			)
+			),
+			CHECK (is_made_by_admin OR user_id IS NOT NULL)
 		)
 	`
 
 	if _, err := r.db.Exec(ctx, query); err != nil {
 		return fmt.Errorf("create exercises table: %w", err)
+	}
+	if _, err := r.db.Exec(ctx, `CREATE UNIQUE INDEX IF NOT EXISTS unique_admin_exercise ON public.exercises (slug, equipment) WHERE is_made_by_admin = TRUE`); err != nil {
+		return fmt.Errorf("create unique admin exercise index: %w", err)
+	}
+	if _, err := r.db.Exec(ctx, `CREATE UNIQUE INDEX IF NOT EXISTS unique_user_exercise ON public.exercises (user_id, slug, equipment) WHERE is_made_by_admin = FALSE`); err != nil {
+		return fmt.Errorf("create unique user exercise index: %w", err)
 	}
 
 	return nil
@@ -61,13 +72,18 @@ func (r *ExerciseRepo) Create(ctx context.Context, exercise *modelexercise.Exerc
 		INSERT INTO exercises (
 			id,
 			name,
+			slug,
 			category,
+			user_id,
 			is_made_by_admin,
 			equipment,
+			primary_muscle,
+			secondary_muscles,
+			difficulty,
 			movement_mode,
 			is_active
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING created_at, updated_at
 	`
 
@@ -76,9 +92,14 @@ func (r *ExerciseRepo) Create(ctx context.Context, exercise *modelexercise.Exerc
 		query,
 		exercise.ID,
 		exercise.Name,
+		exercise.Slug,
 		exercise.Category,
+		exercise.UserID,
 		exercise.IsMadeByAdmin,
 		exercise.Equipment,
+		exercise.PrimaryMuscle,
+		exercise.SecondaryMuscles,
+		exercise.Difficulty,
 		exercise.MovementMode,
 		exercise.IsActive,
 	).Scan(&exercise.CreatedAt, &exercise.UpdatedAt)
@@ -97,9 +118,14 @@ func (r *ExerciseRepo) List(ctx context.Context, filter *modelexercise.ListFilte
 		SELECT
 			id,
 			name,
+			slug,
 			category,
+			user_id,
 			is_made_by_admin,
 			equipment,
+			primary_muscle,
+			secondary_muscles,
+			difficulty,
 			movement_mode,
 			is_active,
 			created_at,
@@ -107,11 +133,16 @@ func (r *ExerciseRepo) List(ctx context.Context, filter *modelexercise.ListFilte
 		FROM exercises
 	`
 
-	whereClauses := make([]string, 0, 2)
-	args := make([]any, 0, 2)
+	whereClauses := make([]string, 0, 3)
+	args := make([]any, 0, 3)
 	argIndex := 1
 
 	if filter != nil {
+		if strings.TrimSpace(filter.UserID) != "" {
+			whereClauses = append(whereClauses, "(is_made_by_admin = TRUE OR user_id = $"+strconv.Itoa(argIndex)+")")
+			args = append(args, strings.TrimSpace(filter.UserID))
+			argIndex++
+		}
 		if filter.NameRegex != nil {
 			whereClauses = append(whereClauses, "name ~* $"+strconv.Itoa(argIndex))
 			args = append(args, *filter.NameRegex)
@@ -142,9 +173,14 @@ func (r *ExerciseRepo) List(ctx context.Context, filter *modelexercise.ListFilte
 		if err := rows.Scan(
 			&exercise.ID,
 			&exercise.Name,
+			&exercise.Slug,
 			&exercise.Category,
+			&exercise.UserID,
 			&exercise.IsMadeByAdmin,
 			&exercise.Equipment,
+			&exercise.PrimaryMuscle,
+			&exercise.SecondaryMuscles,
+			&exercise.Difficulty,
 			&exercise.MovementMode,
 			&exercise.IsActive,
 			&exercise.CreatedAt,
@@ -167,9 +203,14 @@ func (r *ExerciseRepo) GetByID(ctx context.Context, exerciseID string) (*modelex
 		SELECT
 			id,
 			name,
+			slug,
 			category,
+			user_id,
 			is_made_by_admin,
 			equipment,
+			primary_muscle,
+			secondary_muscles,
+			difficulty,
 			movement_mode,
 			is_active,
 			created_at,
@@ -182,9 +223,14 @@ func (r *ExerciseRepo) GetByID(ctx context.Context, exerciseID string) (*modelex
 	err := r.db.QueryRow(ctx, query, exerciseID).Scan(
 		&exercise.ID,
 		&exercise.Name,
+		&exercise.Slug,
 		&exercise.Category,
+		&exercise.UserID,
 		&exercise.IsMadeByAdmin,
 		&exercise.Equipment,
+		&exercise.PrimaryMuscle,
+		&exercise.SecondaryMuscles,
+		&exercise.Difficulty,
 		&exercise.MovementMode,
 		&exercise.IsActive,
 		&exercise.CreatedAt,
@@ -216,8 +262,8 @@ func (r *ExerciseRepo) UpdateByID(ctx context.Context, exerciseID string, input 
 		return nil, modelexercise.ErrExerciseManagedByAdmin
 	}
 
-	setClauses := make([]string, 0, 6)
-	args := make([]any, 0, 7)
+	setClauses := make([]string, 0, 10)
+	args := make([]any, 0, 11)
 	argIndex := 1
 
 	if input.NameSet {
@@ -226,6 +272,14 @@ func (r *ExerciseRepo) UpdateByID(ctx context.Context, exerciseID string, input 
 		}
 		setClauses = append(setClauses, "name = $"+strconv.Itoa(argIndex))
 		args = append(args, *input.Name)
+		argIndex++
+	}
+	if input.SlugSet {
+		if input.Slug == nil {
+			return nil, errors.New("slug cannot be null")
+		}
+		setClauses = append(setClauses, "slug = $"+strconv.Itoa(argIndex))
+		args = append(args, *input.Slug)
 		argIndex++
 	}
 	if input.CategorySet {
@@ -242,6 +296,27 @@ func (r *ExerciseRepo) UpdateByID(ctx context.Context, exerciseID string, input 
 		}
 		setClauses = append(setClauses, "equipment = $"+strconv.Itoa(argIndex))
 		args = append(args, *input.Equipment)
+		argIndex++
+	}
+	if input.PrimaryMuscleSet {
+		if input.PrimaryMuscle == nil {
+			return nil, errors.New("primary_muscle cannot be null")
+		}
+		setClauses = append(setClauses, "primary_muscle = $"+strconv.Itoa(argIndex))
+		args = append(args, *input.PrimaryMuscle)
+		argIndex++
+	}
+	if input.SecondaryMusclesSet {
+		setClauses = append(setClauses, "secondary_muscles = $"+strconv.Itoa(argIndex))
+		args = append(args, input.SecondaryMuscles)
+		argIndex++
+	}
+	if input.DifficultySet {
+		if input.Difficulty == nil {
+			return nil, errors.New("difficulty cannot be null")
+		}
+		setClauses = append(setClauses, "difficulty = $"+strconv.Itoa(argIndex))
+		args = append(args, *input.Difficulty)
 		argIndex++
 	}
 	if input.MovementModeSet {
@@ -281,9 +356,14 @@ func (r *ExerciseRepo) UpdateByID(ctx context.Context, exerciseID string, input 
 		RETURNING
 			id,
 			name,
+			slug,
 			category,
+			user_id,
 			is_made_by_admin,
 			equipment,
+			primary_muscle,
+			secondary_muscles,
+			difficulty,
 			movement_mode,
 			is_active,
 			created_at,
@@ -295,9 +375,14 @@ func (r *ExerciseRepo) UpdateByID(ctx context.Context, exerciseID string, input 
 	err := r.db.QueryRow(ctx, query, args...).Scan(
 		&exercise.ID,
 		&exercise.Name,
+		&exercise.Slug,
 		&exercise.Category,
+		&exercise.UserID,
 		&exercise.IsMadeByAdmin,
 		&exercise.Equipment,
+		&exercise.PrimaryMuscle,
+		&exercise.SecondaryMuscles,
+		&exercise.Difficulty,
 		&exercise.MovementMode,
 		&exercise.IsActive,
 		&exercise.CreatedAt,
@@ -348,10 +433,11 @@ func isExerciseNameConflict(err error) bool {
 	constraintName := strings.ToLower(pgErr.ConstraintName)
 	detail := strings.ToLower(pgErr.Detail)
 
-	if constraintName == "exercises_name_equipment_unique" {
+	if constraintName == "unique_admin_exercise" || constraintName == "unique_user_exercise" {
 		return true
 	}
 
-	return strings.Contains(detail, "(name, equipment)") ||
-		(strings.Contains(detail, "name") && strings.Contains(detail, "equipment"))
+	return strings.Contains(detail, "(slug, equipment)") ||
+		strings.Contains(detail, "(user_id, slug, equipment)") ||
+		(strings.Contains(detail, "slug") && strings.Contains(detail, "equipment"))
 }

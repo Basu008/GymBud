@@ -31,6 +31,7 @@ func (a *API) InitRoutes() {
 	//Exercises
 	a.Router.APIRoot.Handle("/exercises", a.requestAuthHandler(a.listExercises)).Methods("GET")
 	a.Router.APIRoot.Handle("/exercises", a.requestAuthHandler(a.createExercise)).Methods("POST")
+	a.Router.Root.Handle("/exercises/bulk", a.requestHandler(a.createExercises)).Methods("POST")
 	a.Router.APIRoot.Handle("/exercises/{id}", a.requestAuthHandler(a.getExerciseByID)).Methods("GET")
 	a.Router.APIRoot.Handle("/exercises/{id}", a.requestAuthHandler(a.updateExercise)).Methods("PATCH")
 	a.Router.APIRoot.Handle("/exercises/{id}", a.requestAuthHandler(a.deleteExercise)).Methods("DELETE")
