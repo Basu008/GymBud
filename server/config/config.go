@@ -72,8 +72,10 @@ func (pdc *PostgresDatabaseConfig) ConnectionDSN() string {
 
 type RedisConfig struct {
 	Address        string        `mapstructure:"address"`
+	Username       string        `mapstructure:"username"`
 	Password       string        `mapstructure:"password"`
 	Database       int           `mapstructure:"database"`
+	TLS            bool          `mapstructure:"tls"`
 	ConnectTimeout time.Duration `mapstructure:"connectTimeout"`
 	ReadTimeout    time.Duration `mapstructure:"readTimeout"`
 	WriteTimeout   time.Duration `mapstructure:"writeTimeout"`
