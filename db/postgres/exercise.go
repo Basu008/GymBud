@@ -129,6 +129,160 @@ func (r *ExerciseRepo) Create(ctx context.Context, exercise *modelexercise.Exerc
 	return nil
 }
 
+func (r *ExerciseRepo) CreateMany(ctx context.Context, exercises []*modelexercise.Exercise) error {
+	if len(exercises) == 0 {
+		return nil
+	}
+
+	var values strings.Builder
+	args := make([]any, 0, len(exercises)*13)
+	argIndex := 1
+
+	for i, exercise := range exercises {
+		if i > 0 {
+			values.WriteString(", ")
+		}
+
+		values.WriteString("(")
+		values.WriteString("$" + strconv.Itoa(argIndex) + "::int")
+		argIndex++
+		values.WriteString(", $" + strconv.Itoa(argIndex) + "::uuid")
+		argIndex++
+		values.WriteString(", $" + strconv.Itoa(argIndex) + "::varchar")
+		argIndex++
+		values.WriteString(", $" + strconv.Itoa(argIndex) + "::varchar")
+		argIndex++
+		values.WriteString(", $" + strconv.Itoa(argIndex) + "::varchar")
+		argIndex++
+		values.WriteString(", $" + strconv.Itoa(argIndex) + "::uuid")
+		argIndex++
+		values.WriteString(", $" + strconv.Itoa(argIndex) + "::boolean")
+		argIndex++
+		values.WriteString(", $" + strconv.Itoa(argIndex) + "::varchar")
+		argIndex++
+		values.WriteString(", $" + strconv.Itoa(argIndex) + "::varchar")
+		argIndex++
+		values.WriteString(", $" + strconv.Itoa(argIndex) + "::text[]")
+		argIndex++
+		values.WriteString(", $" + strconv.Itoa(argIndex) + "::varchar")
+		argIndex++
+		values.WriteString(", $" + strconv.Itoa(argIndex) + "::varchar")
+		argIndex++
+		values.WriteString(", $" + strconv.Itoa(argIndex) + "::boolean")
+		argIndex++
+		values.WriteString(")")
+
+		args = append(args,
+			i,
+			exercise.ID,
+			exercise.Name,
+			exercise.Slug,
+			exercise.Category,
+			exercise.UserID,
+			exercise.IsMadeByAdmin,
+			exercise.Equipment,
+			exercise.PrimaryMuscle,
+			exercise.SecondaryMuscles,
+			exercise.Difficulty,
+			exercise.MovementMode,
+			exercise.IsActive,
+		)
+	}
+
+	query := `
+		WITH input (
+			input_order,
+			id,
+			name,
+			slug,
+			category,
+			user_id,
+			is_made_by_admin,
+			equipment,
+			primary_muscle,
+			secondary_muscles,
+			difficulty,
+			movement_mode,
+			is_active
+		) AS (
+			VALUES ` + values.String() + `
+		),
+		inserted AS (
+			INSERT INTO exercises (
+				id,
+				name,
+				slug,
+				category,
+				user_id,
+				is_made_by_admin,
+				equipment,
+				primary_muscle,
+				secondary_muscles,
+				difficulty,
+				movement_mode,
+				is_active
+			)
+			SELECT
+				id,
+				name,
+				slug,
+				category,
+				user_id,
+				is_made_by_admin,
+				equipment,
+				primary_muscle,
+				secondary_muscles,
+				difficulty,
+				movement_mode,
+				is_active
+			FROM input
+			ORDER BY input_order
+			RETURNING id, created_at, updated_at
+		)
+		SELECT input.input_order, inserted.created_at, inserted.updated_at
+		FROM inserted
+		JOIN input ON input.id = inserted.id
+		ORDER BY input.input_order
+	`
+
+	rows, err := r.db.Query(ctx, query, args...)
+	if err != nil {
+		if isExerciseNameConflict(err) {
+			return modelexercise.ErrExerciseNameAlreadyExists
+		}
+		return fmt.Errorf("create exercises: %w", err)
+	}
+	defer rows.Close()
+
+	insertedCount := 0
+	for rows.Next() {
+		var inputOrder int
+		var createdAt time.Time
+		var updatedAt time.Time
+		if err := rows.Scan(&inputOrder, &createdAt, &updatedAt); err != nil {
+			return fmt.Errorf("scan created exercise: %w", err)
+		}
+		if inputOrder < 0 || inputOrder >= len(exercises) {
+			return fmt.Errorf("create exercises: unexpected input order %d", inputOrder)
+		}
+		exercises[inputOrder].CreatedAt = createdAt
+		exercises[inputOrder].UpdatedAt = updatedAt
+		insertedCount++
+	}
+
+	if err := rows.Err(); err != nil {
+		if isExerciseNameConflict(err) {
+			return modelexercise.ErrExerciseNameAlreadyExists
+		}
+		return fmt.Errorf("iterate created exercises: %w", err)
+	}
+	if insertedCount != len(exercises) {
+		return fmt.Errorf("create exercises: inserted %d of %d exercises", insertedCount, len(exercises))
+	}
+
+	return nil
+}
+
 func (r *ExerciseRepo) List(ctx context.Context, filter *modelexercise.ListFilter) ([]*modelexercise.Exercise, error) {
 	query := `
 		SELECT

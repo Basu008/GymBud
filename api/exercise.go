@@ -87,7 +87,7 @@ func (a *API) createExercises(ctx *handler.RequestCtx, w http.ResponseWriter, r 
 		return
 	}
 
-	response, err := a.App.ExerciseService.CreateExercises(r.Context(), ctx.UserClaim.UserID, &body)
+	response, err := a.App.ExerciseService.CreateExercises(r.Context(), &body)
 	if err != nil {
 		if errors.Is(err, appexercise.ErrExerciseNameAlreadyExists) {
 			handler.Conflict(w, err.Error())

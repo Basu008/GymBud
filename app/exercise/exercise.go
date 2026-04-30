@@ -81,22 +81,29 @@ func (s *Service) CreateExercise(ctx context.Context, userID string, body *schem
 	return &schema.ExerciseResponse{Exercise: toExercisePayload(exercise)}, nil
 }
 
-func (s *Service) CreateExercises(ctx context.Context, userID string, body *schema.CreateExercisesBody) (*schema.ExercisesResponse, error) {
+func (s *Service) CreateExercises(ctx context.Context, body *schema.CreateExercisesBody) (*schema.ExercisesResponse, error) {
 	if body == nil || len(body.Exercises) == 0 {
 		return nil, errors.New("at least one exercise is required")
 	}
 
-	payload := make([]*schema.ExercisePayload, 0, len(body.Exercises))
+	exercises := make([]*modelexercise.Exercise, 0, len(body.Exercises))
 	for i := range body.Exercises {
-		if body.Exercises[i].IsAdmin == nil {
-			isAdmin := true
-			body.Exercises[i].IsAdmin = &isAdmin
-		}
-
-		exercise, err := s.createExercise(ctx, userID, &body.Exercises[i])
+		exercise, err := s.newExerciseFromBody("", &body.Exercises[i], true)
 		if err != nil {
 			return nil, err
 		}
+		exercises = append(exercises, exercise)
+	}
+
+	if err := s.repo.CreateMany(ctx, exercises); err != nil {
+		if errors.Is(err, modelexercise.ErrExerciseNameAlreadyExists) {
+			return nil, ErrExerciseNameAlreadyExists
+		}
+		return nil, err
+	}
+
+	payload := make([]*schema.ExercisePayload, 0, len(exercises))
+	for _, exercise := range exercises {
 		payload = append(payload, toExercisePayload(exercise))
 	}
 
@@ -104,8 +111,24 @@ func (s *Service) CreateExercises(ctx context.Context, userID string, body *sche
 }
 
 func (s *Service) createExercise(ctx context.Context, userID string, body *schema.CreateExerciseBody) (*modelexercise.Exercise, error) {
-	isAdmin := false
-	if body.IsAdmin != nil {
+	exercise, err := s.newExerciseFromBody(userID, body, false)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.repo.Create(ctx, exercise); err != nil {
+		if errors.Is(err, modelexercise.ErrExerciseNameAlreadyExists) {
+			return nil, ErrExerciseNameAlreadyExists
+		}
+		return nil, err
+	}
+
+	return exercise, nil
+}
+
+func (s *Service) newExerciseFromBody(userID string, body *schema.CreateExerciseBody, forceAdmin bool) (*modelexercise.Exercise, error) {
+	isAdmin := forceAdmin
+	if !forceAdmin && body.IsAdmin != nil {
 		isAdmin = *body.IsAdmin
 	}
 	userID = strings.TrimSpace(userID)
@@ -136,13 +159,6 @@ func (s *Service) createExercise(ctx context.Context, userID string, body *schem
 	}
 
 	if err := s.validateExerciseValues(exercise.Category, exercise.Equipment, exercise.PrimaryMuscle, exercise.SecondaryMuscles, exercise.Difficulty, exercise.MovementMode); err != nil {
-		return nil, err
-	}
-
-	if err := s.repo.Create(ctx, exercise); err != nil {
-		if errors.Is(err, modelexercise.ErrExerciseNameAlreadyExists) {
-			return nil, ErrExerciseNameAlreadyExists
-		}
 		return nil, err
 	}
 
