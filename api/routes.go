@@ -50,4 +50,7 @@ func (a *API) InitRoutes() {
 	a.Router.APIRoot.Handle("/workouts/{id}", a.requestAuthHandler(a.deleteWorkout)).Methods("DELETE")
 	a.Router.APIRoot.Handle("/workouts/{id}/like", a.requestAuthHandler(a.likeWorkout)).Methods("POST")
 	a.Router.APIRoot.Handle("/workouts/{id}/like", a.requestAuthHandler(a.unlikeWorkout)).Methods("DELETE")
+
+	//Media
+	a.Router.APIRoot.Handle("/media/images", a.requestAuthHandler(a.uploadImage)).Methods("POST")
 }

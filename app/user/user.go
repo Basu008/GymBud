@@ -118,6 +118,8 @@ func (s *Service) UpdateActive(ctx context.Context, userID string, isActive bool
 
 func (s *Service) UpdateUser(ctx context.Context, userID string, body *schema.UpdateUserBody) (*schema.UserResponse, error) {
 	updates := &modeluser.UserUpdate{}
+	userID = strings.TrimSpace(userID)
+	var previousProfileImageURL *string
 
 	if body.DisplayName != nil {
 		value := strings.TrimSpace(*body.DisplayName)
@@ -157,17 +159,41 @@ func (s *Service) UpdateUser(ctx context.Context, userID string, body *schema.Up
 		value := strings.TrimSpace(*body.ProfileImageURL)
 		updates.ProfileImageSet = true
 		updates.ProfileImageURL = normalizeOptionalString(value)
+
+		currentUser, err := s.repo.GetByID(ctx, userID)
+		if err != nil {
+			if errors.Is(err, modeluser.ErrUserNotFound) {
+				return nil, ErrUserNotFound
+			}
+			return nil, err
+		}
+		previousProfileImageURL = currentUser.ProfileImageURL
 	}
 
-	user, err := s.repo.UpdateByID(ctx, strings.TrimSpace(userID), updates)
+	user, err := s.repo.UpdateByID(ctx, userID, updates)
 	if err != nil {
 		if errors.Is(err, modeluser.ErrUserNotFound) {
 			return nil, ErrUserNotFound
 		}
 		return nil, err
 	}
+	if shouldDeletePreviousProfileImage(previousProfileImageURL, updates.ProfileImageURL) {
+		if err := s.mediaRepo.DeleteByImageURL(ctx, *previousProfileImageURL); err != nil {
+			return nil, err
+		}
+	}
 
 	return s.buildUserResponse(ctx, user)
+}
+
+func shouldDeletePreviousProfileImage(previous, next *string) bool {
+	if previous == nil || strings.TrimSpace(*previous) == "" {
+		return false
+	}
+	if next == nil {
+		return true
+	}
+	return strings.TrimSpace(*previous) != strings.TrimSpace(*next)
 }
 
 func normalizeOptionalString(value string) *string {

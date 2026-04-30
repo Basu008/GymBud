@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -14,6 +15,7 @@ type Config struct {
 	MongoDatabaseConfig    MongoDatabaseConfig    `mapstructure:"mongoDB"`
 	PostgresDatabaseConfig PostgresDatabaseConfig `mapstructure:"postgres"`
 	RedisConfig            RedisConfig            `mapstructure:"redis"`
+	FirebaseConfig         FirebaseConfig         `mapstructure:"firebase"`
 	MiddleWareConfig       MiddleWareConfig       `mapstructure:"middleWare"`
 	AdditionalConfig       AdditionalConfig       `mapstructure:"additional"`
 }
@@ -75,6 +77,30 @@ type RedisConfig struct {
 	ConnectTimeout time.Duration `mapstructure:"connectTimeout"`
 	ReadTimeout    time.Duration `mapstructure:"readTimeout"`
 	WriteTimeout   time.Duration `mapstructure:"writeTimeout"`
+}
+
+type FirebaseConfig struct {
+	Type                    string `mapstructure:"type" json:"type"`
+	ProjectID               string `mapstructure:"project_id" json:"project_id"`
+	PrivateKeyID            string `mapstructure:"private_key_id" json:"private_key_id"`
+	PrivateKey              string `mapstructure:"private_key" json:"private_key"`
+	ClientEmail             string `mapstructure:"client_email" json:"client_email"`
+	ClientID                string `mapstructure:"client_id" json:"client_id"`
+	AuthURI                 string `mapstructure:"auth_uri" json:"auth_uri"`
+	TokenURI                string `mapstructure:"token_uri" json:"token_uri"`
+	AuthProviderX509CertURL string `mapstructure:"auth_provider_x509_cert_url" json:"auth_provider_x509_cert_url"`
+	ClientX509CertURL       string `mapstructure:"client_x509_cert_url" json:"client_x509_cert_url"`
+	UniverseDomain          string `mapstructure:"universe_domain" json:"universe_domain"`
+	StorageBucket           string `mapstructure:"storage_bucket" json:"-"`
+}
+
+func (fc *FirebaseConfig) ReturnConfigJSON() []byte {
+	configJSON, err := json.Marshal(fc)
+	if err != nil {
+		log.Fatalf("failed to marshal firebase config: %v", err)
+	}
+
+	return configJSON
 }
 
 type MiddleWareConfig struct {

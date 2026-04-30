@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Basu008/GymBud/app/exercise"
+	"github.com/Basu008/GymBud/app/media"
 	"github.com/Basu008/GymBud/app/routine"
 	"github.com/Basu008/GymBud/app/social"
 	"github.com/Basu008/GymBud/app/user"
@@ -35,6 +36,10 @@ func InitService(a *App) error {
 	if err != nil {
 		return fmt.Errorf("init social repository: %w", err)
 	}
+	mediaRepo, err := postgres.NewMediaRepo(postgresDB)
+	if err != nil {
+		return fmt.Errorf("init media repository: %w", err)
+	}
 	a.ExerciseService = exercise.NewExerciseService(&exercise.Opts{
 		Repo:   exerciseRepo,
 		Logger: a.Logger,
@@ -47,6 +52,7 @@ func InitService(a *App) error {
 	a.UserService = user.NewUserService(&user.Opts{
 		Repo:        userRepo,
 		SocialRepo:  socialRepo,
+		MediaRepo:   mediaRepo,
 		Logger:      a.Logger,
 		AuthService: a.AuthService,
 	})
@@ -61,6 +67,11 @@ func InitService(a *App) error {
 		SocialRepo:  socialRepo,
 		UserRepo:    userRepo,
 		Logger:      a.Logger,
+	})
+	a.MediaService = media.NewMediaService(&media.Opts{
+		Firebase: a.Firebase,
+		Repo:     mediaRepo,
+		Logger:   a.Logger,
 	})
 
 	return nil

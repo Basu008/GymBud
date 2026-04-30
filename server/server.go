@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	firebase "firebase.google.com/go/v4"
 	"github.com/Basu008/GymBud/api"
 	"github.com/Basu008/GymBud/app"
 	"github.com/Basu008/GymBud/server/auth"
@@ -36,6 +37,7 @@ type Server struct {
 	Mongo    *mongo.Client
 	Postgres *pgxpool.Pool
 	Redis    *redis.Client
+	Firebase *firebase.App
 
 	API *api.API
 }
@@ -53,6 +55,7 @@ func NewServer() *Server {
 	server.Mongo = database.NewMongoClient(c.MongoDatabaseConfig)
 	server.Postgres = database.NewPostgresPool(c.PostgresDatabaseConfig)
 	server.Redis = database.NewRedisClient(c.RedisConfig)
+	server.Firebase = database.NewFireBaseApp(&c.FirebaseConfig)
 
 	r := mux.NewRouter()
 	server.Router = r
@@ -65,6 +68,7 @@ func NewServer() *Server {
 		Mongo:    server.Mongo.Database(c.MongoDatabaseConfig.Database),
 		Postgres: server.Postgres,
 		Redis:    server.Redis,
+		Firebase: server.Firebase,
 	})
 	a.AuthService = authService
 	if err := app.InitService(a); err != nil {

@@ -1,7 +1,9 @@
 package app
 
 import (
+	firebase "firebase.google.com/go/v4"
 	"github.com/Basu008/GymBud/app/exercise"
+	"github.com/Basu008/GymBud/app/media"
 	"github.com/Basu008/GymBud/app/routine"
 	"github.com/Basu008/GymBud/app/social"
 	"github.com/Basu008/GymBud/app/user"
@@ -20,6 +22,7 @@ type App struct {
 	Mongo    *mongo.Database
 	Postgres *pgxpool.Pool
 	Redis    *redis.Client
+	Firebase *firebase.App
 
 	//Services
 	ExerciseService *exercise.Service
@@ -27,6 +30,7 @@ type App struct {
 	UserService     *user.Service
 	SocialService   *social.Service
 	WorkoutService  *workout.Service
+	MediaService    *media.Service
 	AuthService     *auth.AuthService
 }
 
@@ -36,6 +40,7 @@ type Options struct {
 	Mongo    *mongo.Database
 	Postgres *pgxpool.Pool
 	Redis    *redis.Client
+	Firebase *firebase.App
 }
 
 func NewApp(opts *Options) *App {
@@ -45,5 +50,6 @@ func NewApp(opts *Options) *App {
 		Mongo:    opts.Mongo,
 		Postgres: opts.Postgres,
 		Redis:    opts.Redis,
+		Firebase: opts.Firebase,
 	}
 }
