@@ -74,6 +74,9 @@ func (r *UserRepo) initTable() error {
 	if _, err := r.db.Exec(ctx, createBodyMetricsTable); err != nil {
 		return fmt.Errorf("create user_body_metrics table: %w", err)
 	}
+	if _, err := r.db.Exec(ctx, `CREATE INDEX IF NOT EXISTS user_body_metrics_user_recorded_idx ON public.user_body_metrics (user_id, recorded_at DESC, created_at DESC, id DESC)`); err != nil {
+		return fmt.Errorf("create user body metrics user recorded index: %w", err)
+	}
 
 	const createCurrentStatsTable = `
 		CREATE TABLE IF NOT EXISTS public.user_current_stats (

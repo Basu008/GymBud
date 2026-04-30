@@ -42,6 +42,9 @@ func (r *RoutineRepo) initTable() error {
 	if _, err := r.db.Exec(ctx, createRoutinesTable); err != nil {
 		return fmt.Errorf("create routines table: %w", err)
 	}
+	if _, err := r.db.Exec(ctx, `CREATE INDEX IF NOT EXISTS routines_user_created_name_idx ON public.routines (user_id, created_at ASC, name ASC)`); err != nil {
+		return fmt.Errorf("create routines user created name index: %w", err)
+	}
 
 	const createRoutineExercisesTable = `
 		CREATE TABLE IF NOT EXISTS public.routine_exercises (
@@ -58,6 +61,9 @@ func (r *RoutineRepo) initTable() error {
 	`
 	if _, err := r.db.Exec(ctx, createRoutineExercisesTable); err != nil {
 		return fmt.Errorf("create routine_exercises table: %w", err)
+	}
+	if _, err := r.db.Exec(ctx, `CREATE INDEX IF NOT EXISTS routine_exercises_exercise_id_idx ON public.routine_exercises (exercise_id)`); err != nil {
+		return fmt.Errorf("create routine exercises exercise id index: %w", err)
 	}
 
 	const createRoutineExerciseSetsTable = `

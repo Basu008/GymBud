@@ -41,6 +41,12 @@ func (r *SocialRepo) initTable() error {
 	if _, err := r.db.Exec(ctx, createFollowsTable); err != nil {
 		return fmt.Errorf("create follows table: %w", err)
 	}
+	if _, err := r.db.Exec(ctx, `CREATE INDEX IF NOT EXISTS follows_followee_status_created_idx ON public.follows (followee_id, status, created_at DESC, follower_id)`); err != nil {
+		return fmt.Errorf("create follows followee status created index: %w", err)
+	}
+	if _, err := r.db.Exec(ctx, `CREATE INDEX IF NOT EXISTS follows_follower_status_created_idx ON public.follows (follower_id, status, created_at DESC, followee_id)`); err != nil {
+		return fmt.Errorf("create follows follower status created index: %w", err)
+	}
 
 	const createWorkoutLikesTable = `
 		CREATE TABLE IF NOT EXISTS public.workout_likes (
@@ -53,6 +59,9 @@ func (r *SocialRepo) initTable() error {
 
 	if _, err := r.db.Exec(ctx, createWorkoutLikesTable); err != nil {
 		return fmt.Errorf("create workout_likes table: %w", err)
+	}
+	if _, err := r.db.Exec(ctx, `CREATE INDEX IF NOT EXISTS workout_likes_user_id_idx ON public.workout_likes (user_id)`); err != nil {
+		return fmt.Errorf("create workout likes user id index: %w", err)
 	}
 
 	return nil

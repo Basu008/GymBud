@@ -30,6 +30,10 @@ func (r *ExerciseRepo) initTable() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	if _, err := r.db.Exec(ctx, `CREATE EXTENSION IF NOT EXISTS pg_trgm`); err != nil {
+		return fmt.Errorf("create pg_trgm extension: %w", err)
+	}
+
 	const query = `
 		CREATE TABLE IF NOT EXISTS public.exercises (
 			id UUID PRIMARY KEY,
@@ -62,6 +66,18 @@ func (r *ExerciseRepo) initTable() error {
 	}
 	if _, err := r.db.Exec(ctx, `CREATE UNIQUE INDEX IF NOT EXISTS unique_user_exercise ON public.exercises (user_id, slug, equipment) WHERE is_made_by_admin = FALSE`); err != nil {
 		return fmt.Errorf("create unique user exercise index: %w", err)
+	}
+	if _, err := r.db.Exec(ctx, `CREATE INDEX IF NOT EXISTS exercises_name_trgm_idx ON public.exercises USING GIN (name gin_trgm_ops)`); err != nil {
+		return fmt.Errorf("create exercise name trigram index: %w", err)
+	}
+	if _, err := r.db.Exec(ctx, `CREATE INDEX IF NOT EXISTS exercises_category_name_idx ON public.exercises (LOWER(category), name, created_at)`); err != nil {
+		return fmt.Errorf("create exercise category name index: %w", err)
+	}
+	if _, err := r.db.Exec(ctx, `CREATE INDEX IF NOT EXISTS exercises_admin_name_idx ON public.exercises (name, created_at) WHERE is_made_by_admin = TRUE`); err != nil {
+		return fmt.Errorf("create admin exercise name index: %w", err)
+	}
+	if _, err := r.db.Exec(ctx, `CREATE INDEX IF NOT EXISTS exercises_user_name_idx ON public.exercises (user_id, name, created_at) WHERE is_made_by_admin = FALSE`); err != nil {
+		return fmt.Errorf("create user exercise name index: %w", err)
 	}
 
 	return nil

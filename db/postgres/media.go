@@ -47,6 +47,12 @@ func (r *MediaRepo) initTable() error {
 	if _, err := r.db.Exec(ctx, query); err != nil {
 		return fmt.Errorf("create media table: %w", err)
 	}
+	if _, err := r.db.Exec(ctx, `CREATE INDEX IF NOT EXISTS media_public_url_idx ON public.media (public_url)`); err != nil {
+		return fmt.Errorf("create media public url index: %w", err)
+	}
+	if _, err := r.db.Exec(ctx, `CREATE INDEX IF NOT EXISTS media_owner_entity_idx ON public.media (owner_id, entity_type, entity_id, created_at DESC)`); err != nil {
+		return fmt.Errorf("create media owner entity index: %w", err)
+	}
 
 	return nil
 }
