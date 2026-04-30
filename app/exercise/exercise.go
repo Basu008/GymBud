@@ -35,6 +35,30 @@ func (s *Service) ListExercises(ctx context.Context, userID string, nameRegex, c
 	return &schema.ExercisesResponse{Exercises: payload}, nil
 }
 
+func (s *Service) ListExerciseCategories() *schema.ExerciseCategoriesResponse {
+	return &schema.ExerciseCategoriesResponse{
+		ExerciseCategories: cloneStrings(s.config.AdditionalConfig.ExerciseCategories),
+	}
+}
+
+func (s *Service) ListExerciseMuscles() *schema.ExerciseMusclesResponse {
+	return &schema.ExerciseMusclesResponse{
+		ExerciseMuscles: cloneStrings(s.config.AdditionalConfig.ExerciseMuscles),
+	}
+}
+
+func (s *Service) ListExerciseEquipments() *schema.ExerciseEquipmentsResponse {
+	return &schema.ExerciseEquipmentsResponse{
+		ExerciseEquipments: cloneStrings(s.config.AdditionalConfig.ExerciseEquipments),
+	}
+}
+
+func (s *Service) ListExerciseDifficulty() *schema.ExerciseDifficultyResponse {
+	return &schema.ExerciseDifficultyResponse{
+		ExerciseDifficulty: cloneStrings(s.config.AdditionalConfig.ExerciseDifficulty),
+	}
+}
+
 func (s *Service) GetExerciseByID(ctx context.Context, exerciseID string) (*schema.ExerciseResponse, error) {
 	exerciseID = strings.TrimSpace(exerciseID)
 	exercise, err := s.repo.GetByID(ctx, exerciseID)
@@ -379,4 +403,10 @@ func requiresMovementMode(equipment string) bool {
 	return strings.EqualFold(equipment, "Dumbbell") ||
 		strings.EqualFold(equipment, "Cable") ||
 		strings.EqualFold(equipment, "Machine")
+}
+
+func cloneStrings(values []string) []string {
+	cloned := make([]string, len(values))
+	copy(cloned, values)
+	return cloned
 }

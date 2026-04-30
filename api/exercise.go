@@ -22,6 +22,22 @@ func (a *API) listExercises(ctx *handler.RequestCtx, w http.ResponseWriter, r *h
 	handler.OK(w, response)
 }
 
+func (a *API) listExerciseCategories(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
+	handler.OK(w, a.App.ExerciseService.ListExerciseCategories())
+}
+
+func (a *API) listExerciseMuscles(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
+	handler.OK(w, a.App.ExerciseService.ListExerciseMuscles())
+}
+
+func (a *API) listExerciseEquipments(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
+	handler.OK(w, a.App.ExerciseService.ListExerciseEquipments())
+}
+
+func (a *API) listExerciseDifficulty(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
+	handler.OK(w, a.App.ExerciseService.ListExerciseDifficulty())
+}
+
 func (a *API) getExerciseByID(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
 	exerciseID := pathID(r)
 	response, err := a.App.ExerciseService.GetExerciseByID(r.Context(), exerciseID)

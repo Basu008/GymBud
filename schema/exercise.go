@@ -53,6 +53,22 @@ type ExercisesResponse struct {
 	Exercises []*ExercisePayload `json:"exercises"`
 }
 
+type ExerciseCategoriesResponse struct {
+	ExerciseCategories []string `json:"exerciseCategories"`
+}
+
+type ExerciseMusclesResponse struct {
+	ExerciseMuscles []string `json:"exerciseMuscles"`
+}
+
+type ExerciseEquipmentsResponse struct {
+	ExerciseEquipments []string `json:"exerciseEquipments"`
+}
+
+type ExerciseDifficultyResponse struct {
+	ExerciseDifficulty []string `json:"exerciseDifficulty"`
+}
+
 type DeleteExerciseResponse struct {
 	DeletedID string `json:"deleted_id"`
 }
