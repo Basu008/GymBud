@@ -19,6 +19,10 @@ type UserRepo struct {
 	db *pgxpool.Pool
 }
 
+type scanner interface {
+	Scan(dest ...any) error
+}
+
 func NewUserRepo(db *pgxpool.Pool) (*UserRepo, error) {
 	repo := &UserRepo{db: db}
 	if err := repo.initTable(); err != nil {
@@ -423,6 +427,98 @@ func (r *UserRepo) CreateBodyMetrics(ctx context.Context, metrics *user.BodyMetr
 	}
 
 	return currentStats, nil
+}
+
+func (r *UserRepo) GetCurrentBodyMetrics(ctx context.Context, userID string) (*user.BodyMetrics, error) {
+	const query = `
+		SELECT
+			id,
+			user_id,
+			height_cm,
+			weight_kg,
+			recorded_at,
+			source,
+			created_at
+		FROM user_body_metrics
+		WHERE user_id = $1
+		ORDER BY recorded_at DESC, created_at DESC, id DESC
+		LIMIT 1
+	`
+
+	metrics, err := r.getBodyMetricsByQuery(ctx, query, userID)
+	if err != nil {
+		if errors.Is(err, user.ErrBodyMetricsNotFound) {
+			return nil, user.ErrBodyMetricsNotFound
+		}
+		return nil, fmt.Errorf("get current body metrics: %w", err)
+	}
+
+	return metrics, nil
+}
+
+func (r *UserRepo) ListBodyMetrics(ctx context.Context, userID string, limit int) ([]*user.BodyMetrics, error) {
+	if limit <= 0 {
+		return []*user.BodyMetrics{}, nil
+	}
+
+	const query = `
+		SELECT
+			id,
+			user_id,
+			height_cm,
+			weight_kg,
+			recorded_at,
+			source,
+			created_at
+		FROM user_body_metrics
+		WHERE user_id = $1
+		ORDER BY recorded_at DESC, created_at DESC, id DESC
+		LIMIT $2
+	`
+
+	rows, err := r.db.Query(ctx, query, userID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list body metrics: %w", err)
+	}
+	defer rows.Close()
+
+	metrics := make([]*user.BodyMetrics, 0, limit)
+	for rows.Next() {
+		var m user.BodyMetrics
+		if err := scanBodyMetrics(rows, &m); err != nil {
+			return nil, fmt.Errorf("scan body metrics: %w", err)
+		}
+		metrics = append(metrics, &m)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate body metrics: %w", err)
+	}
+
+	return metrics, nil
+}
+
+func (r *UserRepo) getBodyMetricsByQuery(ctx context.Context, query string, args ...any) (*user.BodyMetrics, error) {
+	var metrics user.BodyMetrics
+	if err := scanBodyMetrics(r.db.QueryRow(ctx, query, args...), &metrics); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, user.ErrBodyMetricsNotFound
+		}
+		return nil, err
+	}
+
+	return &metrics, nil
+}
+
+func scanBodyMetrics(row scanner, metrics *user.BodyMetrics) error {
+	return row.Scan(
+		&metrics.ID,
+		&metrics.UserID,
+		&metrics.HeightCM,
+		&metrics.WeightKG,
+		&metrics.RecordedAt,
+		&metrics.Source,
+		&metrics.CreatedAt,
+	)
 }
 
 func (r *UserRepo) DeleteBodyMetrics(ctx context.Context, userID, metricsID string) (*user.CurrentStats, error) {

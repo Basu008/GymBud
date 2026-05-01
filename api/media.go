@@ -20,11 +20,9 @@ func (a *API) uploadImage(ctx *handler.RequestCtx, w http.ResponseWriter, r *htt
 	}
 	defer file.Close()
 
-	entityID := r.FormValue("entity_id")
 	input := &appmedia.UploadImageInput{
 		OwnerID:    ctx.UserClaim.UserID,
 		EntityType: r.FormValue("entity_type"),
-		EntityID:   &entityID,
 		File:       file,
 	}
 

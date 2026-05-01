@@ -247,6 +247,30 @@ func (a *API) createBodyMetrics(ctx *handler.RequestCtx, w http.ResponseWriter, 
 	handler.Created(w, response)
 }
 
+func (a *API) getCurrentBodyMetrics(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
+	response, err := a.App.UserService.GetCurrentBodyMetrics(r.Context(), ctx.UserClaim.UserID)
+	if err != nil {
+		if errors.Is(err, appuser.ErrBodyMetricsNotFound) {
+			handler.NotFound(w, err.Error())
+			return
+		}
+		handler.BadRequest(w, err.Error())
+		return
+	}
+
+	handler.OK(w, response)
+}
+
+func (a *API) listBodyMetrics(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
+	response, err := a.App.UserService.ListBodyMetrics(r.Context(), ctx.UserClaim.UserID)
+	if err != nil {
+		handler.BadRequest(w, err.Error())
+		return
+	}
+
+	handler.OK(w, response)
+}
+
 func (a *API) deleteBodyMetrics(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
 	metricsID := pathID(r)
 	response, err := a.App.UserService.DeleteBodyMetrics(r.Context(), ctx.UserClaim.UserID, metricsID)

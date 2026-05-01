@@ -5,15 +5,18 @@ import (
 )
 
 type CreateBodyMetricsBody struct {
-	HeightCM   *float64 `json:"height_cm"`
-	WeightKG   *float64 `json:"weight_kg"`
-	RecordedAt string   `json:"recorded_at" validate:"required"`
-	Source     string   `json:"source"`
+	HeightCM *float64 `json:"height_cm"`
+	WeightKG *float64 `json:"weight_kg"`
+	Source   string   `json:"source"`
 }
 
 type BodyMetricsResponse struct {
 	Metrics      *modeluser.BodyMetrics  `json:"metrics"`
 	CurrentStats *modeluser.CurrentStats `json:"current_stats"`
+}
+
+type BodyMetricsListResponse struct {
+	Metrics []*modeluser.BodyMetrics `json:"metrics"`
 }
 
 type DeleteBodyMetricsResponse struct {

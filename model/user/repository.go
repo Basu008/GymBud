@@ -18,5 +18,7 @@ type Repository interface {
 	UpdatePrivacyByID(ctx context.Context, userID string, isPrivate bool) (*User, error)
 	UpdateActiveByID(ctx context.Context, userID string, isActive bool) (*User, error)
 	CreateBodyMetrics(ctx context.Context, metrics *BodyMetrics) (*CurrentStats, error)
+	GetCurrentBodyMetrics(ctx context.Context, userID string) (*BodyMetrics, error)
+	ListBodyMetrics(ctx context.Context, userID string, limit int) ([]*BodyMetrics, error)
 	DeleteBodyMetrics(ctx context.Context, userID, metricsID string) (*CurrentStats, error)
 }

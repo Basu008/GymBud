@@ -19,11 +19,6 @@ func (s *Service) CreateBodyMetrics(ctx context.Context, userID string, body *sc
 		return nil, err
 	}
 
-	recordedAt, err := time.Parse(time.RFC3339, strings.TrimSpace(body.RecordedAt))
-	if err != nil {
-		return nil, err
-	}
-
 	source := strings.TrimSpace(body.Source)
 	if source == "" {
 		source = "manual"
@@ -34,7 +29,7 @@ func (s *Service) CreateBodyMetrics(ctx context.Context, userID string, body *sc
 		UserID:     parsedUserID,
 		HeightCM:   body.HeightCM,
 		WeightKG:   body.WeightKG,
-		RecordedAt: recordedAt.UTC(),
+		RecordedAt: time.Now().UTC(),
 		Source:     source,
 	}
 
@@ -46,6 +41,31 @@ func (s *Service) CreateBodyMetrics(ctx context.Context, userID string, body *sc
 	return &schema.BodyMetricsResponse{
 		Metrics:      metrics,
 		CurrentStats: currentStats,
+	}, nil
+}
+
+func (s *Service) GetCurrentBodyMetrics(ctx context.Context, userID string) (*schema.BodyMetricsResponse, error) {
+	metrics, err := s.repo.GetCurrentBodyMetrics(ctx, strings.TrimSpace(userID))
+	if err != nil {
+		if errors.Is(err, modeluser.ErrBodyMetricsNotFound) {
+			return nil, ErrBodyMetricsNotFound
+		}
+		return nil, err
+	}
+
+	return &schema.BodyMetricsResponse{
+		Metrics: metrics,
+	}, nil
+}
+
+func (s *Service) ListBodyMetrics(ctx context.Context, userID string) (*schema.BodyMetricsListResponse, error) {
+	metrics, err := s.repo.ListBodyMetrics(ctx, strings.TrimSpace(userID), 5)
+	if err != nil {
+		return nil, err
+	}
+
+	return &schema.BodyMetricsListResponse{
+		Metrics: metrics,
 	}, nil
 }
 
