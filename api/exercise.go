@@ -10,10 +10,16 @@ import (
 )
 
 func (a *API) listExercises(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
+	page, limit, err := a.paginationParams(r)
+	if err != nil {
+		handler.BadRequest(w, "page and limit must be positive integers")
+		return
+	}
+
 	name := r.URL.Query().Get("name")
 	category := r.URL.Query().Get("category")
 
-	response, err := a.App.ExerciseService.ListExercises(r.Context(), ctx.UserClaim.UserID, &name, &category)
+	response, err := a.App.ExerciseService.ListExercises(r.Context(), ctx.UserClaim.UserID, &name, &category, page, limit)
 	if err != nil {
 		handler.BadRequest(w, err.Error())
 		return
@@ -67,6 +73,10 @@ func (a *API) createExercise(ctx *handler.RequestCtx, w http.ResponseWriter, r *
 	response, err := a.App.ExerciseService.CreateExercise(r.Context(), ctx.UserClaim.UserID, &body)
 	if err != nil {
 		if errors.Is(err, appexercise.ErrExerciseNameAlreadyExists) {
+			handler.Conflict(w, err.Error())
+			return
+		}
+		if errors.Is(err, appexercise.ErrCustomExerciseLimitReached) {
 			handler.Conflict(w, err.Error())
 			return
 		}

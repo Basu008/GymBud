@@ -126,10 +126,26 @@ func (r *RoutineRepo) Create(ctx context.Context, routine *modelroutine.Routine)
 	return r.GetByID(ctx, routine.UserID, routine.ID)
 }
 
-func (r *RoutineRepo) ListByUserID(ctx context.Context, userID string) ([]*modelroutine.Routine, error) {
-	rows, err := r.db.Query(ctx, `SELECT id FROM routines WHERE user_id = $1 ORDER BY created_at ASC, name ASC`, userID)
+func (r *RoutineRepo) ListByUserID(ctx context.Context, filter *modelroutine.ListFilter) ([]*modelroutine.Routine, int64, error) {
+	if filter == nil {
+		return nil, 0, errors.New("routine list filter is required")
+	}
+
+	var total int64
+	if err := r.db.QueryRow(ctx, `SELECT COUNT(*) FROM routines WHERE user_id = $1`, filter.UserID).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count routines: %w", err)
+	}
+
+	query := `SELECT id FROM routines WHERE user_id = $1 ORDER BY created_at ASC, name ASC`
+	args := []any{filter.UserID}
+	if filter.Limit > 0 {
+		query += ` LIMIT $2 OFFSET $3`
+		args = append(args, filter.Limit, filter.Offset)
+	}
+
+	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("list routine ids: %w", err)
+		return nil, 0, fmt.Errorf("list routine ids: %w", err)
 	}
 	defer rows.Close()
 
@@ -137,21 +153,21 @@ func (r *RoutineRepo) ListByUserID(ctx context.Context, userID string) ([]*model
 	for rows.Next() {
 		var routineID string
 		if err := rows.Scan(&routineID); err != nil {
-			return nil, fmt.Errorf("scan routine id: %w", err)
+			return nil, 0, fmt.Errorf("scan routine id: %w", err)
 		}
 
-		routine, err := r.GetByID(ctx, userID, routineID)
+		routine, err := r.GetByID(ctx, filter.UserID, routineID)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		routines = append(routines, routine)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate routine ids: %w", err)
+		return nil, 0, fmt.Errorf("iterate routine ids: %w", err)
 	}
 
-	return routines, nil
+	return routines, total, nil
 }
 
 func (r *RoutineRepo) GetByID(ctx context.Context, userID, routineID string) (*modelroutine.Routine, error) {

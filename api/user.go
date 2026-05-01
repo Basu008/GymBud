@@ -262,7 +262,13 @@ func (a *API) getCurrentBodyMetrics(ctx *handler.RequestCtx, w http.ResponseWrit
 }
 
 func (a *API) listBodyMetrics(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
-	response, err := a.App.UserService.ListBodyMetrics(r.Context(), ctx.UserClaim.UserID)
+	page, limit, err := a.paginationParams(r)
+	if err != nil {
+		handler.BadRequest(w, "page and limit must be positive integers")
+		return
+	}
+
+	response, err := a.App.UserService.ListBodyMetrics(r.Context(), ctx.UserClaim.UserID, page, limit)
 	if err != nil {
 		handler.BadRequest(w, err.Error())
 		return

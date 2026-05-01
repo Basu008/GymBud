@@ -63,7 +63,12 @@ type RoutineResponse struct {
 }
 
 type RoutinesResponse struct {
-	Routines []*RoutinePayload `json:"routines"`
+	Routines   []*RoutinePayload `json:"routines"`
+	Pagination PaginationPayload `json:"pagination"`
+}
+
+type RoutineCountResponse struct {
+	Count int `json:"count"`
 }
 
 type DeleteRoutineResponse struct {

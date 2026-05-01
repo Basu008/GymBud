@@ -10,7 +10,23 @@ import (
 )
 
 func (a *API) listRoutines(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
-	response, err := a.App.RoutineService.ListRoutines(r.Context(), ctx.UserClaim.UserID)
+	page, limit, err := a.paginationParams(r)
+	if err != nil {
+		handler.BadRequest(w, "page and limit must be positive integers")
+		return
+	}
+
+	response, err := a.App.RoutineService.ListRoutines(r.Context(), ctx.UserClaim.UserID, page, limit)
+	if err != nil {
+		handler.InternalServerError(w, err.Error())
+		return
+	}
+
+	handler.OK(w, response)
+}
+
+func (a *API) countRoutines(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
+	response, err := a.App.RoutineService.CountRoutines(r.Context(), ctx.UserClaim.UserID)
 	if err != nil {
 		handler.InternalServerError(w, err.Error())
 		return

@@ -16,7 +16,8 @@ type BodyMetricsResponse struct {
 }
 
 type BodyMetricsListResponse struct {
-	Metrics []*modeluser.BodyMetrics `json:"metrics"`
+	Metrics    []*modeluser.BodyMetrics `json:"metrics"`
+	Pagination PaginationPayload        `json:"pagination"`
 }
 
 type DeleteBodyMetricsResponse struct {

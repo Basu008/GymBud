@@ -58,14 +58,15 @@ func (s *Service) GetCurrentBodyMetrics(ctx context.Context, userID string) (*sc
 	}, nil
 }
 
-func (s *Service) ListBodyMetrics(ctx context.Context, userID string) (*schema.BodyMetricsListResponse, error) {
-	metrics, err := s.repo.ListBodyMetrics(ctx, strings.TrimSpace(userID), 5)
+func (s *Service) ListBodyMetrics(ctx context.Context, userID string, page, limit int) (*schema.BodyMetricsListResponse, error) {
+	metrics, total, err := s.repo.ListBodyMetrics(ctx, strings.TrimSpace(userID), (page-1)*limit, limit)
 	if err != nil {
 		return nil, err
 	}
 
 	return &schema.BodyMetricsListResponse{
-		Metrics: metrics,
+		Metrics:    metrics,
+		Pagination: schema.NewPaginationPayload(page, limit, total),
 	}, nil
 }
 

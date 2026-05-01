@@ -50,7 +50,8 @@ type ExerciseResponse struct {
 }
 
 type ExercisesResponse struct {
-	Exercises []*ExercisePayload `json:"exercises"`
+	Exercises  []*ExercisePayload `json:"exercises"`
+	Pagination PaginationPayload  `json:"pagination"`
 }
 
 type ExerciseCategoriesResponse struct {

@@ -12,7 +12,8 @@ var ErrExerciseManagedByAdmin = errors.New("admin-created exercises cannot be up
 type Repository interface {
 	Create(ctx context.Context, exercise *Exercise) error
 	CreateMany(ctx context.Context, exercises []*Exercise) error
-	List(ctx context.Context, filter *ListFilter) ([]*Exercise, error)
+	List(ctx context.Context, filter *ListFilter) ([]*Exercise, int64, error)
+	CountCustomByUserID(ctx context.Context, userID string) (int, error)
 	GetByID(ctx context.Context, exerciseID string) (*Exercise, error)
 	UpdateByID(ctx context.Context, exerciseID string, input *UpdateInput) (*Exercise, error)
 	DeleteByID(ctx context.Context, exerciseID string) error

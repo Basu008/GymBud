@@ -14,15 +14,20 @@ import (
 var ErrExerciseNotFound = errors.New("exercise not found")
 var ErrExerciseNameAlreadyExists = errors.New("exercise already exists for this equipment")
 var ErrExerciseManagedByAdmin = errors.New("admin-created exercises cannot be updated or deleted")
+var ErrCustomExerciseLimitReached = errors.New("users can have at most 5 custom exercises")
 
-func (s *Service) ListExercises(ctx context.Context, userID string, nameRegex, category *string) (*schema.ExercisesResponse, error) {
+const maxCustomExercisesPerUser = 5
+
+func (s *Service) ListExercises(ctx context.Context, userID string, nameRegex, category *string, page, limit int) (*schema.ExercisesResponse, error) {
 	filter := &modelexercise.ListFilter{
 		NameRegex: normalizeOptionalString(nameRegex),
 		Category:  normalizeOptionalLowerString(category),
 		UserID:    strings.TrimSpace(userID),
+		Offset:    int64((page - 1) * limit),
+		Limit:     int64(limit),
 	}
 
-	exercises, err := s.repo.List(ctx, filter)
+	exercises, total, err := s.repo.List(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +37,10 @@ func (s *Service) ListExercises(ctx context.Context, userID string, nameRegex, c
 		payload = append(payload, toExercisePayload(exercise))
 	}
 
-	return &schema.ExercisesResponse{Exercises: payload}, nil
+	return &schema.ExercisesResponse{
+		Exercises:  payload,
+		Pagination: schema.NewPaginationPayload(page, limit, total),
+	}, nil
 }
 
 func (s *Service) ListExerciseCategories() *schema.ExerciseCategoriesResponse {
@@ -115,6 +123,15 @@ func (s *Service) createExercise(ctx context.Context, userID string, body *schem
 	if err != nil {
 		return nil, err
 	}
+	if !exercise.IsMadeByAdmin {
+		count, err := s.repo.CountCustomByUserID(ctx, strings.TrimSpace(userID))
+		if err != nil {
+			return nil, err
+		}
+		if count >= maxCustomExercisesPerUser {
+			return nil, ErrCustomExerciseLimitReached
+		}
+	}
 
 	if err := s.repo.Create(ctx, exercise); err != nil {
 		if errors.Is(err, modelexercise.ErrExerciseNameAlreadyExists) {
@@ -128,9 +145,6 @@ func (s *Service) createExercise(ctx context.Context, userID string, body *schem
 
 func (s *Service) newExerciseFromBody(userID string, body *schema.CreateExerciseBody, forceAdmin bool) (*modelexercise.Exercise, error) {
 	isAdmin := forceAdmin
-	if !forceAdmin && body.IsAdmin != nil {
-		isAdmin = *body.IsAdmin
-	}
 	userID = strings.TrimSpace(userID)
 	var ownerID *string
 	if !isAdmin {

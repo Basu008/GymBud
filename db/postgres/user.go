@@ -456,9 +456,14 @@ func (r *UserRepo) GetCurrentBodyMetrics(ctx context.Context, userID string) (*u
 	return metrics, nil
 }
 
-func (r *UserRepo) ListBodyMetrics(ctx context.Context, userID string, limit int) ([]*user.BodyMetrics, error) {
+func (r *UserRepo) ListBodyMetrics(ctx context.Context, userID string, offset, limit int) ([]*user.BodyMetrics, int64, error) {
 	if limit <= 0 {
-		return []*user.BodyMetrics{}, nil
+		return []*user.BodyMetrics{}, 0, nil
+	}
+
+	var total int64
+	if err := r.db.QueryRow(ctx, `SELECT COUNT(*) FROM user_body_metrics WHERE user_id = $1`, userID).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count body metrics: %w", err)
 	}
 
 	const query = `
@@ -474,11 +479,12 @@ func (r *UserRepo) ListBodyMetrics(ctx context.Context, userID string, limit int
 		WHERE user_id = $1
 		ORDER BY recorded_at DESC, created_at DESC, id DESC
 		LIMIT $2
+		OFFSET $3
 	`
 
-	rows, err := r.db.Query(ctx, query, userID, limit)
+	rows, err := r.db.Query(ctx, query, userID, limit, offset)
 	if err != nil {
-		return nil, fmt.Errorf("list body metrics: %w", err)
+		return nil, 0, fmt.Errorf("list body metrics: %w", err)
 	}
 	defer rows.Close()
 
@@ -486,15 +492,15 @@ func (r *UserRepo) ListBodyMetrics(ctx context.Context, userID string, limit int
 	for rows.Next() {
 		var m user.BodyMetrics
 		if err := scanBodyMetrics(rows, &m); err != nil {
-			return nil, fmt.Errorf("scan body metrics: %w", err)
+			return nil, 0, fmt.Errorf("scan body metrics: %w", err)
 		}
 		metrics = append(metrics, &m)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate body metrics: %w", err)
+		return nil, 0, fmt.Errorf("iterate body metrics: %w", err)
 	}
 
-	return metrics, nil
+	return metrics, total, nil
 }
 
 func (r *UserRepo) getBodyMetricsByQuery(ctx context.Context, query string, args ...any) (*user.BodyMetrics, error) {

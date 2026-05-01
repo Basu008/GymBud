@@ -283,7 +283,15 @@ func (r *ExerciseRepo) CreateMany(ctx context.Context, exercises []*modelexercis
 	return nil
 }
 
-func (r *ExerciseRepo) List(ctx context.Context, filter *modelexercise.ListFilter) ([]*modelexercise.Exercise, error) {
+func (r *ExerciseRepo) List(ctx context.Context, filter *modelexercise.ListFilter) ([]*modelexercise.Exercise, int64, error) {
+	whereClause, args := buildExerciseListWhereClause(filter)
+
+	countQuery := `SELECT COUNT(*) FROM exercises` + whereClause
+	var total int64
+	if err := r.db.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count exercises: %w", err)
+	}
+
 	query := `
 		SELECT
 			id,
@@ -301,39 +309,18 @@ func (r *ExerciseRepo) List(ctx context.Context, filter *modelexercise.ListFilte
 			created_at,
 			updated_at
 		FROM exercises
-	`
-
-	whereClauses := make([]string, 0, 3)
-	args := make([]any, 0, 3)
-	argIndex := 1
-
-	if filter != nil {
-		if strings.TrimSpace(filter.UserID) != "" {
-			whereClauses = append(whereClauses, "(is_made_by_admin = TRUE OR user_id = $"+strconv.Itoa(argIndex)+")")
-			args = append(args, strings.TrimSpace(filter.UserID))
-			argIndex++
-		}
-		if filter.NameRegex != nil {
-			whereClauses = append(whereClauses, "name ~* $"+strconv.Itoa(argIndex))
-			args = append(args, *filter.NameRegex)
-			argIndex++
-		}
-		if filter.Category != nil {
-			whereClauses = append(whereClauses, "LOWER(category) = $"+strconv.Itoa(argIndex))
-			args = append(args, *filter.Category)
-			argIndex++
-		}
-	}
-
-	if len(whereClauses) > 0 {
-		query += "\nWHERE " + strings.Join(whereClauses, " AND ")
-	}
-
+	` + whereClause
 	query += "\nORDER BY name ASC, created_at ASC"
+	if filter != nil && filter.Limit > 0 {
+		query += "\nLIMIT $" + strconv.Itoa(len(args)+1)
+		args = append(args, filter.Limit)
+		query += "\nOFFSET $" + strconv.Itoa(len(args)+1)
+		args = append(args, filter.Offset)
+	}
 
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("list exercises: %w", err)
+		return nil, 0, fmt.Errorf("list exercises: %w", err)
 	}
 	defer rows.Close()
 
@@ -356,16 +343,54 @@ func (r *ExerciseRepo) List(ctx context.Context, filter *modelexercise.ListFilte
 			&exercise.CreatedAt,
 			&exercise.UpdatedAt,
 		); err != nil {
-			return nil, fmt.Errorf("scan exercise: %w", err)
+			return nil, 0, fmt.Errorf("scan exercise: %w", err)
 		}
 		exercises = append(exercises, &exercise)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate exercises: %w", err)
+		return nil, 0, fmt.Errorf("iterate exercises: %w", err)
 	}
 
-	return exercises, nil
+	return exercises, total, nil
+}
+
+func (r *ExerciseRepo) CountCustomByUserID(ctx context.Context, userID string) (int, error) {
+	var count int
+	if err := r.db.QueryRow(ctx, `SELECT COUNT(*) FROM exercises WHERE user_id = $1 AND is_made_by_admin = FALSE`, userID).Scan(&count); err != nil {
+		return 0, fmt.Errorf("count custom exercises: %w", err)
+	}
+	return count, nil
+}
+
+func buildExerciseListWhereClause(filter *modelexercise.ListFilter) (string, []any) {
+	whereClauses := make([]string, 0, 3)
+	args := make([]any, 0, 3)
+	argIndex := 1
+
+	if filter != nil {
+		if strings.TrimSpace(filter.UserID) != "" {
+			whereClauses = append(whereClauses, "(is_made_by_admin = TRUE OR user_id = $"+strconv.Itoa(argIndex)+")")
+			args = append(args, strings.TrimSpace(filter.UserID))
+			argIndex++
+		}
+		if filter.NameRegex != nil {
+			whereClauses = append(whereClauses, "name ~* $"+strconv.Itoa(argIndex))
+			args = append(args, *filter.NameRegex)
+			argIndex++
+		}
+		if filter.Category != nil {
+			whereClauses = append(whereClauses, "LOWER(category) = $"+strconv.Itoa(argIndex))
+			args = append(args, *filter.Category)
+			argIndex++
+		}
+	}
+
+	if len(whereClauses) == 0 {
+		return "", args
+	}
+
+	return "\nWHERE " + strings.Join(whereClauses, " AND "), args
 }
 
 func (r *ExerciseRepo) GetByID(ctx context.Context, exerciseID string) (*modelexercise.Exercise, error) {

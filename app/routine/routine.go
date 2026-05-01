@@ -17,8 +17,12 @@ var ErrRoutineLimitReached = errors.New("users can have at most 9 routines")
 var ErrExerciseNotFound = errors.New("one or more exercises not found")
 var ErrRoutineCopyNotAllowed = errors.New("you can copy this routine only if you follow its owner")
 
-func (s *Service) ListRoutines(ctx context.Context, userID string) (*schema.RoutinesResponse, error) {
-	routines, err := s.repo.ListByUserID(ctx, strings.TrimSpace(userID))
+func (s *Service) ListRoutines(ctx context.Context, userID string, page, limit int) (*schema.RoutinesResponse, error) {
+	routines, total, err := s.repo.ListByUserID(ctx, &modelroutine.ListFilter{
+		UserID: strings.TrimSpace(userID),
+		Offset: int64((page - 1) * limit),
+		Limit:  int64(limit),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +32,19 @@ func (s *Service) ListRoutines(ctx context.Context, userID string) (*schema.Rout
 		payload = append(payload, toRoutinePayload(routine))
 	}
 
-	return &schema.RoutinesResponse{Routines: payload}, nil
+	return &schema.RoutinesResponse{
+		Routines:   payload,
+		Pagination: schema.NewPaginationPayload(page, limit, total),
+	}, nil
+}
+
+func (s *Service) CountRoutines(ctx context.Context, userID string) (*schema.RoutineCountResponse, error) {
+	count, err := s.repo.CountByUserID(ctx, strings.TrimSpace(userID))
+	if err != nil {
+		return nil, err
+	}
+
+	return &schema.RoutineCountResponse{Count: count}, nil
 }
 
 func (s *Service) GetRoutineByID(ctx context.Context, userID, routineID string) (*schema.RoutineResponse, error) {
