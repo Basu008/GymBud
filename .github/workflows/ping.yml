@@ -1,13 +1,14 @@
 name: Keep Server Alive
 
 on:
+  workflow_dispatch:
   schedule:
-    - cron: "*/10 * * * *"  # every 10 minutes
+    - cron: "*/10 * * * *"
 
 jobs:
   ping:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Curl request
-        run: curl -X GET https://gymbud-lwdp.onrender.com/health-check
+      - name: Ping Render server
+        run: curl -f https://gymbud-lwdp.onrender.com/health-check
