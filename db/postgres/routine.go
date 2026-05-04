@@ -136,7 +136,7 @@ func (r *RoutineRepo) ListByUserID(ctx context.Context, filter *modelroutine.Lis
 		return nil, 0, fmt.Errorf("count routines: %w", err)
 	}
 
-	query := `SELECT id FROM routines WHERE user_id = $1 ORDER BY created_at ASC, name ASC`
+	query := `SELECT id FROM routines WHERE user_id = $1 ORDER BY created_at DESC, id DESC`
 	args := []any{filter.UserID}
 	if filter.Limit > 0 {
 		query += ` LIMIT $2 OFFSET $3`

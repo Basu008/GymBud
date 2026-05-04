@@ -310,7 +310,7 @@ func (r *ExerciseRepo) List(ctx context.Context, filter *modelexercise.ListFilte
 			updated_at
 		FROM exercises
 	` + whereClause
-	query += "\nORDER BY name ASC, created_at ASC"
+	query += "\nORDER BY created_at DESC, id DESC"
 	if filter != nil && filter.Limit > 0 {
 		query += "\nLIMIT $" + strconv.Itoa(len(args)+1)
 		args = append(args, filter.Limit)
