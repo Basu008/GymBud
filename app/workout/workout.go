@@ -591,6 +591,7 @@ func buildWorkoutSets(workout *modelworkout.Workout, routineExercise *modelrouti
 	sets := make([]*modelworkout.WorkoutExerciseSet, 0, len(inputs))
 	stats := modelworkout.WorkoutStats{}
 	bestSetIndex := -1
+	volumeMultiplier := exerciseVolumeMultiplier(routineExercise)
 
 	for idx, input := range inputs {
 		if input.SetNumber <= 0 {
@@ -601,10 +602,6 @@ func buildWorkoutSets(workout *modelworkout.Workout, routineExercise *modelrouti
 		}
 		seenSetNumbers[input.SetNumber] = struct{}{}
 
-		routineSet, ok := routineSetByNumber[input.SetNumber]
-		if !ok {
-			return nil, stats, nil, errors.New("one or more sets do not exist in the routine exercise")
-		}
 		if input.ActualReps <= 0 {
 			return nil, stats, nil, errors.New("actual_reps must be greater than 0")
 		}
@@ -612,22 +609,31 @@ func buildWorkoutSets(workout *modelworkout.Workout, routineExercise *modelrouti
 			return nil, stats, nil, errors.New("actual_weight_kg must be greater than or equal to 0")
 		}
 
-		sets = append(sets, &modelworkout.WorkoutExerciseSet{
+		workoutSet := &modelworkout.WorkoutExerciseSet{
 			SetNumber:       input.SetNumber,
-			PlannedMinReps:  routineSet.MinReps,
-			PlannedMaxReps:  routineSet.MaxReps,
-			PlannedWeightKG: routineSet.TargetWeightKG,
+			PlannedMinReps:  intPointer(input.ActualReps),
+			PlannedMaxReps:  intPointer(input.ActualReps),
+			PlannedWeightKG: floatPointer(input.ActualWeightKG),
 			ActualReps:      input.ActualReps,
 			ActualWeightKG:  input.ActualWeightKG,
 			PRFlags:         modelworkout.PRFlags{},
-		})
+		}
+		if routineSet, ok := routineSetByNumber[input.SetNumber]; ok {
+			workoutSet.PlannedMinReps = intPointer(routineSet.MinReps)
+			workoutSet.PlannedMaxReps = intPointer(routineSet.MaxReps)
+			if routineSet.TargetWeightKG != nil {
+				workoutSet.PlannedWeightKG = routineSet.TargetWeightKG
+			}
+		}
+
+		sets = append(sets, workoutSet)
 		if bestSetIndex == -1 || isBetterWorkoutSet(input, inputs[bestSetIndex]) {
 			bestSetIndex = idx
 		}
 
 		stats.TotalSets++
 		stats.TotalReps += input.ActualReps
-		stats.TotalVolume += float64(input.ActualReps) * input.ActualWeightKG
+		stats.TotalVolume += float64(input.ActualReps) * input.ActualWeightKG * volumeMultiplier
 	}
 
 	if bestSetIndex >= 0 {
@@ -657,6 +663,17 @@ func isBetterWorkoutSet(candidate, currentBest schema.CreateWorkoutSetInput) boo
 		return candidate.ActualReps > currentBest.ActualReps
 	}
 	return candidate.SetNumber < currentBest.SetNumber
+}
+
+func exerciseVolumeMultiplier(routineExercise *modelroutine.RoutineExercise) float64 {
+	if routineExercise == nil || routineExercise.Exercise == nil || routineExercise.Exercise.MovementMode == nil {
+		return 1
+	}
+	if strings.EqualFold(strings.TrimSpace(routineExercise.Exercise.Equipment), "Dumbbell") &&
+		strings.EqualFold(strings.TrimSpace(*routineExercise.Exercise.MovementMode), "unilateral") {
+		return 2
+	}
+	return 1
 }
 
 func evaluatePR(workout *modelworkout.Workout, routineExercise *modelroutine.RoutineExercise, actualWeight float64, actualReps int, now time.Time, current *modelworkout.PersonalRecord) (modelworkout.PRFlags, *modelworkout.PersonalRecord, *modelworkout.PersonalRecord) {
@@ -732,8 +749,8 @@ func toWorkoutPayload(workout *modelworkout.Workout, owner *schema.WorkoutUserPa
 				},
 			}
 			if includeSensitiveFields {
-				payloadSet.PlannedMinReps = intPointer(set.PlannedMinReps)
-				payloadSet.PlannedMaxReps = intPointer(set.PlannedMaxReps)
+				payloadSet.PlannedMinReps = set.PlannedMinReps
+				payloadSet.PlannedMaxReps = set.PlannedMaxReps
 				payloadSet.PlannedWeightKG = set.PlannedWeightKG
 			}
 			sets = append(sets, payloadSet)
@@ -821,6 +838,10 @@ func toWorkoutUserPayload(user *modeluser.User) *schema.WorkoutUserPayload {
 }
 
 func intPointer(value int) *int {
+	return &value
+}
+
+func floatPointer(value float64) *float64 {
 	return &value
 }
 

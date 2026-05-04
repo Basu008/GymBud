@@ -42,8 +42,8 @@ type WorkoutExercise struct {
 
 type WorkoutExerciseSet struct {
 	SetNumber       int      `bson:"set_number" json:"set_number"`
-	PlannedMinReps  int      `bson:"planned_min_reps" json:"planned_min_reps"`
-	PlannedMaxReps  int      `bson:"planned_max_reps" json:"planned_max_reps"`
+	PlannedMinReps  *int     `bson:"planned_min_reps,omitempty" json:"planned_min_reps,omitempty"`
+	PlannedMaxReps  *int     `bson:"planned_max_reps,omitempty" json:"planned_max_reps,omitempty"`
 	PlannedWeightKG *float64 `bson:"planned_weight_kg,omitempty" json:"planned_weight_kg,omitempty"`
 	ActualReps      int      `bson:"actual_reps" json:"actual_reps"`
 	ActualWeightKG  float64  `bson:"actual_weight_kg" json:"actual_weight_kg"`
