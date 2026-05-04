@@ -72,6 +72,23 @@ type WorkoutAnalyticsResponse struct {
 	Stats  WorkoutAnalyticsStatsPayload `json:"stats"`
 }
 
+type PersonalRecordPayload struct {
+	ID           string    `json:"id"`
+	UserID       string    `json:"user_id"`
+	ExerciseID   string    `json:"exercise_id"`
+	ExerciseName string    `json:"exercise_name"`
+	BestWeightKG float64   `json:"best_weight_kg"`
+	BestReps     int       `json:"best_reps"`
+	Estimated1RM float64   `json:"estimated_1rm"`
+	WorkoutID    string    `json:"workout_id"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+type PersonalRecordsResponse struct {
+	PersonalRecords []*PersonalRecordPayload `json:"personal_records"`
+	Pagination      PaginationPayload        `json:"pagination"`
+}
+
 type WorkoutPayload struct {
 	ID          string                    `json:"id"`
 	UserID      string                    `json:"user_id"`

@@ -182,6 +182,22 @@ func (a *API) getCurrentUserWorkoutAnalytics(ctx *handler.RequestCtx, w http.Res
 	handler.OK(w, response)
 }
 
+func (a *API) listCurrentUserPersonalRecords(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
+	page, limit, err := a.paginationParams(r)
+	if err != nil {
+		handler.BadRequest(w, "page and limit must be positive integers")
+		return
+	}
+
+	response, err := a.App.WorkoutService.ListCurrentUserPersonalRecords(r.Context(), ctx.UserClaim.UserID, page, limit)
+	if err != nil {
+		handler.BadRequest(w, err.Error())
+		return
+	}
+
+	handler.OK(w, response)
+}
+
 func (a *API) getUserWorkoutAnalytics(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
 	startedAtGTE, startedAtLT, err := a.workoutAnalyticsDateRange(r)
 	if err != nil {

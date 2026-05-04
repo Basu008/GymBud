@@ -207,6 +207,30 @@ func (s *Service) GetWorkoutAnalytics(ctx context.Context, viewerUserID, targetU
 	}, nil
 }
 
+func (s *Service) ListCurrentUserPersonalRecords(ctx context.Context, userID string, page, limit int) (*schema.PersonalRecordsResponse, error) {
+	userID = strings.TrimSpace(userID)
+
+	if _, err := uuid.Parse(userID); err != nil {
+		return nil, err
+	}
+
+	offset := int64((page - 1) * limit)
+	records, total, err := s.repo.ListCurrentPersonalRecords(ctx, userID, offset, int64(limit))
+	if err != nil {
+		return nil, err
+	}
+
+	payloads := make([]*schema.PersonalRecordPayload, 0, len(records))
+	for _, record := range records {
+		payloads = append(payloads, toPersonalRecordPayload(record))
+	}
+
+	return &schema.PersonalRecordsResponse{
+		PersonalRecords: payloads,
+		Pagination:      schema.NewPaginationPayload(page, limit, total),
+	}, nil
+}
+
 func (s *Service) ListFollowingWorkouts(ctx context.Context, viewerUserID string, page, limit int, startedAtGTE, startedAtLT *time.Time) (*schema.WorkoutsResponse, error) {
 	viewerUserID = strings.TrimSpace(viewerUserID)
 
@@ -805,6 +829,24 @@ func notesForViewer(notes *string, includeNotes bool) *string {
 		return nil
 	}
 	return notes
+}
+
+func toPersonalRecordPayload(record *modelworkout.PersonalRecord) *schema.PersonalRecordPayload {
+	if record == nil {
+		return nil
+	}
+
+	return &schema.PersonalRecordPayload{
+		ID:           record.ID,
+		UserID:       record.UserID,
+		ExerciseID:   record.ExerciseID,
+		ExerciseName: record.ExerciseName,
+		BestWeightKG: record.BestWeightKG,
+		BestReps:     record.BestReps,
+		Estimated1RM: record.Estimated1RM,
+		WorkoutID:    record.WorkoutID,
+		UpdatedAt:    record.UpdatedAt,
+	}
 }
 
 func (s *Service) resolveWorkoutVisibility(ctx context.Context, viewerUserID, targetUserID string) (*string, error) {

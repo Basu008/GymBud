@@ -257,6 +257,65 @@ func (r *WorkoutRepo) GetCurrentPRWorkoutIDs(ctx context.Context, userID string,
 	return workoutIDSet, nil
 }
 
+func (r *WorkoutRepo) ListCurrentPersonalRecords(ctx context.Context, userID string, offset, limit int64) ([]*modelworkout.PersonalRecord, int64, error) {
+	countPipeline := mongodriver.Pipeline{
+		{{Key: "$match", Value: bson.M{"user_id": userID}}},
+		{{Key: "$group", Value: bson.M{"_id": "$exercise_id"}}},
+		{{Key: "$count", Value: "total"}},
+	}
+
+	countCursor, err := r.personalRecordCollection.Aggregate(ctx, countPipeline)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count personal records: %w", err)
+	}
+	defer countCursor.Close(ctx)
+
+	type countResult struct {
+		Total int64 `bson:"total"`
+	}
+
+	var countResults []countResult
+	if err := countCursor.All(ctx, &countResults); err != nil {
+		return nil, 0, fmt.Errorf("decode personal record count: %w", err)
+	}
+
+	var total int64
+	if len(countResults) > 0 {
+		total = countResults[0].Total
+	}
+
+	pipeline := mongodriver.Pipeline{
+		{{Key: "$match", Value: bson.M{"user_id": userID}}},
+		{{Key: "$sort", Value: bson.D{{Key: "updated_at", Value: -1}, {Key: "_id", Value: -1}}}},
+		{{Key: "$group", Value: bson.M{
+			"_id":    "$exercise_id",
+			"record": bson.M{"$first": "$$ROOT"},
+		}}},
+		{{Key: "$replaceRoot", Value: bson.M{"newRoot": "$record"}}},
+		{{Key: "$sort", Value: bson.D{{Key: "updated_at", Value: -1}, {Key: "_id", Value: -1}}}},
+		{{Key: "$skip", Value: offset}},
+		{{Key: "$limit", Value: limit}},
+	}
+
+	cursor, err := r.personalRecordCollection.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list personal records: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var docs []*personalRecordDocument
+	if err := cursor.All(ctx, &docs); err != nil {
+		return nil, 0, fmt.Errorf("decode personal records: %w", err)
+	}
+
+	records := make([]*modelworkout.PersonalRecord, 0, len(docs))
+	for _, doc := range docs {
+		records = append(records, personalRecordModelFromDocument(doc))
+	}
+
+	return records, total, nil
+}
+
 func (r *WorkoutRepo) GetLatestPersonalRecord(ctx context.Context, userID, exerciseID string) (*modelworkout.PersonalRecord, error) {
 	var record personalRecordDocument
 	err := r.personalRecordCollection.FindOne(

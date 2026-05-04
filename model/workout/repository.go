@@ -11,6 +11,7 @@ type Repository interface {
 	ListAllByUserID(ctx context.Context, filter *ListFilter) ([]*Workout, error)
 	ListFeedByUserIDs(ctx context.Context, filter *ListFilter) ([]*Workout, int64, error)
 	GetCurrentPRWorkoutIDs(ctx context.Context, userID string, workoutIDs []string) (map[string]bool, error)
+	ListCurrentPersonalRecords(ctx context.Context, userID string, offset, limit int64) ([]*PersonalRecord, int64, error)
 	GetLatestPersonalRecord(ctx context.Context, userID, exerciseID string) (*PersonalRecord, error)
 	CreatePersonalRecord(ctx context.Context, record *PersonalRecord) error
 }
