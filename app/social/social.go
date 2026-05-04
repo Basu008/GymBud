@@ -141,9 +141,17 @@ func (s *Service) buildUserResponse(ctx context.Context, u *modeluser.User) (*sc
 	if err != nil {
 		return nil, err
 	}
+	bodyMetrics, err := s.userRepo.GetCurrentBodyMetrics(ctx, u.ID.String())
+	if err != nil {
+		if !errors.Is(err, modeluser.ErrBodyMetricsNotFound) {
+			return nil, err
+		}
+		bodyMetrics = nil
+	}
 
 	return &schema.UserResponse{
 		User:           u,
+		BodyMetrics:    bodyMetrics,
 		FollowersCount: counts.Followers,
 		FollowingCount: counts.Following,
 	}, nil

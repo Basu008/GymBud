@@ -45,8 +45,9 @@ type UpdateActiveBody struct {
 
 type UserResponse struct {
 	*modeluser.User
-	FollowersCount int64 `json:"followers_count"`
-	FollowingCount int64 `json:"following_count"`
+	BodyMetrics    *modeluser.BodyMetrics `json:"body_metrics,omitempty"`
+	FollowersCount int64                  `json:"followers_count"`
+	FollowingCount int64                  `json:"following_count"`
 }
 
 type FollowActionResponse struct {
