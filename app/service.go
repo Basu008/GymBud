@@ -63,11 +63,12 @@ func InitService(a *App) error {
 		Logger:   a.Logger,
 	})
 	a.WorkoutService = workout.NewWorkoutService(&workout.Opts{
-		Repo:        workoutRepo,
-		RoutineRepo: routineRepo,
-		SocialRepo:  socialRepo,
-		UserRepo:    userRepo,
-		Logger:      a.Logger,
+		Repo:         workoutRepo,
+		RoutineRepo:  routineRepo,
+		ExerciseRepo: exerciseRepo,
+		SocialRepo:   socialRepo,
+		UserRepo:     userRepo,
+		Logger:       a.Logger,
 	})
 	a.MediaService = media.NewMediaService(&media.Opts{
 		Firebase: a.Firebase,
