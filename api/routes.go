@@ -2,6 +2,7 @@ package api
 
 func (a *API) InitRoutes() {
 	a.Router.Root.Handle("/health-check", a.requestHandler(a.healthCheck)).Methods("GET")
+	a.Router.APIRoot.Handle("/app/version", a.requestHandler(a.getAppVersion)).Methods("GET")
 
 	//Auth
 	a.Router.APIRoot.Handle("/auth/signup", a.requestHandler(a.signUp)).Methods("POST")

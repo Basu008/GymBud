@@ -114,6 +114,11 @@ type AdditionalConfig struct {
 	ExerciseMuscles        []string `mapstructure:"exerciseMuscles"`
 	ExerciseEquipments     []string `mapstructure:"exerciseEquipments"`
 	ExerciseDifficulty     []string `mapstructure:"exerciseDifficulty"`
+	MinSupportedVersion    string   `mapstructure:"minSupportedVersion"`
+	LatestVersion          string   `mapstructure:"latestVersion"`
+	UpdateURL              string   `mapstructure:"updateURL"`
+	Title                  string   `mapstructure:"title"`
+	Message                string   `mapstructure:"message"`
 }
 
 func GetConfig() *Config {
