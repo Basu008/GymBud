@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	modelexercise "github.com/Basu008/GymBud/model/exercise"
 	modelroutine "github.com/Basu008/GymBud/model/routine"
 	modelsocial "github.com/Basu008/GymBud/model/social"
 	modeluser "github.com/Basu008/GymBud/model/user"
@@ -526,7 +527,7 @@ func (s *Service) buildWorkoutExercises(ctx context.Context, workout *modelworko
 	stats := modelworkout.WorkoutStats{}
 	personalRecords := make([]*modelworkout.PersonalRecord, 0)
 
-	for _, input := range inputs {
+	for i, input := range inputs {
 		exerciseID := strings.TrimSpace(input.ExerciseID)
 		if exerciseID == "" {
 			return nil, stats, nil, errors.New("exercise_id is required")
@@ -541,7 +542,19 @@ func (s *Service) buildWorkoutExercises(ctx context.Context, workout *modelworko
 
 		routineExercise, ok := routineExerciseByID[exerciseID]
 		if !ok {
-			return nil, stats, nil, ErrRoutineExerciseNotFound
+			ex, err := s.exerciseRepo.GetByID(ctx, exerciseID)
+			if err != nil {
+				if errors.Is(err, modelexercise.ErrExerciseNotFound) {
+					return nil, stats, nil, ErrRoutineExerciseNotFound
+				}
+				return nil, stats, nil, err
+			}
+			routineExercise = &modelroutine.RoutineExercise{
+				ExerciseID: ex.ID,
+				OrderIndex: i,
+				Exercise:   ex,
+				Sets:       nil,
+			}
 		}
 		if routineExercise.Exercise == nil {
 			return nil, stats, nil, errors.New("routine exercise metadata is missing")
