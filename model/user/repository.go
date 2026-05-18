@@ -21,4 +21,5 @@ type Repository interface {
 	GetCurrentBodyMetrics(ctx context.Context, userID string) (*BodyMetrics, error)
 	ListBodyMetrics(ctx context.Context, userID string, offset, limit int) ([]*BodyMetrics, int64, error)
 	DeleteBodyMetrics(ctx context.Context, userID, metricsID string) (*CurrentStats, error)
+	DeleteByID(ctx context.Context, userID string) error
 }

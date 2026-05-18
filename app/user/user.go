@@ -207,6 +207,22 @@ func (s *Service) Logout(ctx context.Context, sessionID string) error {
 	return s.authService.LogoutSession(ctx, strings.TrimSpace(sessionID))
 }
 
+func (s *Service) DeleteAccount(ctx context.Context, userID, sessionID, reason string) error {
+	if err := s.deletionLogRepo.LogDeletion(ctx, userID, strings.TrimSpace(reason)); err != nil {
+		return err
+	}
+	if err := s.authService.LogoutSession(ctx, strings.TrimSpace(sessionID)); err != nil {
+		return err
+	}
+	if err := s.repo.DeleteByID(ctx, userID); err != nil {
+		if errors.Is(err, modeluser.ErrUserNotFound) {
+			return ErrUserNotFound
+		}
+		return err
+	}
+	return nil
+}
+
 func (s *Service) buildUserResponse(ctx context.Context, u *modeluser.User) (*schema.UserResponse, error) {
 	counts, err := s.socialRepo.GetFollowCounts(ctx, u.ID.String())
 	if err != nil {

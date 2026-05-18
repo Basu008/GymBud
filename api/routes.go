@@ -14,6 +14,7 @@ func (a *API) InitRoutes() {
 	a.Router.APIRoot.Handle("/users/me", a.requestAuthHandler(a.updateUser)).Methods("PATCH")
 	a.Router.APIRoot.Handle("/users/me/privacy", a.requestAuthHandler(a.updatePrivacy)).Methods("PATCH")
 	a.Router.APIRoot.Handle("/users/me/active", a.requestAuthHandler(a.updateActive)).Methods("PATCH")
+	a.Router.APIRoot.Handle("/users/me", a.requestAuthHandler(a.deleteAccount)).Methods("DELETE")
 	a.Router.APIRoot.Handle("/users/me/body-metrics", a.requestAuthHandler(a.listBodyMetrics)).Methods("GET")
 	a.Router.APIRoot.Handle("/users/me/body-metrics/latest", a.requestAuthHandler(a.getCurrentBodyMetrics)).Methods("GET")
 	a.Router.APIRoot.Handle("/users/me/body-metrics", a.requestAuthHandler(a.createBodyMetrics)).Methods("POST")

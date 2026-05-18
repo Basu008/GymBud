@@ -559,6 +559,17 @@ func (r *UserRepo) DeleteBodyMetrics(ctx context.Context, userID, metricsID stri
 	return currentStats, nil
 }
 
+func (r *UserRepo) DeleteByID(ctx context.Context, userID string) error {
+	commandTag, err := r.db.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID)
+	if err != nil {
+		return fmt.Errorf("delete user: %w", err)
+	}
+	if commandTag.RowsAffected() == 0 {
+		return user.ErrUserNotFound
+	}
+	return nil
+}
+
 func (r *UserRepo) refreshCurrentStats(ctx context.Context, tx pgx.Tx, userID uuid.UUID) (*user.CurrentStats, error) {
 	const latestMetricsQuery = `
 		SELECT

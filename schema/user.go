@@ -59,3 +59,7 @@ type LoginUserResponse struct {
 	User        *UserResponse `json:"user"`
 	AccessToken string        `json:"access_token"`
 }
+
+type DeleteAccountBody struct {
+	Reason string `json:"reason" validate:"required"`
+}

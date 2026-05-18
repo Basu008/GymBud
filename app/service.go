@@ -32,6 +32,10 @@ func InitService(a *App) error {
 	if err != nil {
 		return fmt.Errorf("init workout repository: %w", err)
 	}
+	userDeletionRepo, err := mongorepo.NewUserDeletionRepo(a.Mongo)
+	if err != nil {
+		return fmt.Errorf("init user deletion repository: %w", err)
+	}
 	socialRepo, err := postgres.NewSocialRepo(postgresDB)
 	if err != nil {
 		return fmt.Errorf("init social repository: %w", err)
@@ -41,11 +45,12 @@ func InitService(a *App) error {
 		return fmt.Errorf("init media repository: %w", err)
 	}
 	a.UserService = user.NewUserService(&user.Opts{
-		Repo:        userRepo,
-		SocialRepo:  socialRepo,
-		MediaRepo:   mediaRepo,
-		Logger:      a.Logger,
-		AuthService: a.AuthService,
+		Repo:            userRepo,
+		SocialRepo:      socialRepo,
+		MediaRepo:       mediaRepo,
+		Logger:          a.Logger,
+		AuthService:     a.AuthService,
+		DeletionLogRepo: userDeletionRepo,
 	})
 	a.ExerciseService = exercise.NewExerciseService(&exercise.Opts{
 		Repo:   exerciseRepo,

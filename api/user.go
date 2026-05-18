@@ -277,6 +277,28 @@ func (a *API) listBodyMetrics(ctx *handler.RequestCtx, w http.ResponseWriter, r 
 	handler.OK(w, response)
 }
 
+func (a *API) deleteAccount(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
+	var body schema.DeleteAccountBody
+	if err := handler.BindJSON(r, &body); err != nil {
+		handler.BadRequest(w, err.Error())
+		return
+	}
+	if !a.validateBody(w, &body) {
+		return
+	}
+
+	if err := a.App.UserService.DeleteAccount(r.Context(), ctx.UserClaim.UserID, ctx.UserClaim.SessionID, body.Reason); err != nil {
+		if errors.Is(err, appuser.ErrUserNotFound) {
+			handler.NotFound(w, err.Error())
+			return
+		}
+		handler.InternalServerError(w, err.Error())
+		return
+	}
+
+	handler.OK(w, true)
+}
+
 func (a *API) deleteBodyMetrics(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Request) {
 	metricsID := pathID(r)
 	response, err := a.App.UserService.DeleteBodyMetrics(r.Context(), ctx.UserClaim.UserID, metricsID)
