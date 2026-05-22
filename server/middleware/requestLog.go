@@ -9,6 +9,16 @@ import (
 	"github.com/rs/zerolog"
 )
 
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
 type RequestLogger struct {
 	log *zerolog.Logger
 }
@@ -25,14 +35,20 @@ func (l *RequestLogger) ServeHTTP(w http.ResponseWriter, r *http.Request, next h
 	w.Header().Set("X-Request-ID", reqID)
 	r = handler.SetContextValue(r, handler.KeyRequestID, reqID)
 
+	rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 	start := time.Now()
-	next(w, r)
+	next(rw, r)
 	duration := time.Since(start)
 
-	l.log.Info().
+	event := l.log.Info()
+	if rw.statusCode >= 400 {
+		event = l.log.Error()
+	}
+	event.
 		Str("request_id", reqID).
 		Str("method", r.Method).
 		Str("path", r.URL.Path).
+		Int("status", rw.statusCode).
 		Dur("duration", duration).
 		Msg("request")
 }
