@@ -4,3 +4,4 @@ conf/*
 bin/
 .gocache/
 .gomodcache/
+.claude/
