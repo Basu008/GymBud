@@ -19,10 +19,10 @@ func (a *API) signUp(ctx *handler.RequestCtx, w http.ResponseWriter, r *http.Req
 	if !a.validateBody(w, &s) {
 		return
 	}
-	if !isStrongPassword(s.Password) {
-		handler.BadRequest(w, "password must be at least 8 characters and include one uppercase letter, one lowercase letter, one number, and one special character")
-		return
-	}
+	// if !isStrongPassword(s.Password) {
+	// 	handler.BadRequest(w, "password must be at least 8 characters and include one uppercase letter, one lowercase letter, one number, and one special character")
+	// 	return
+	// }
 	if err := a.App.UserService.SignUpUser(r.Context(), &s); err != nil {
 		if errors.Is(err, appuser.ErrUsernameAlreadyExists) {
 			handler.Conflict(w, err.Error())
